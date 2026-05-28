@@ -971,7 +971,7 @@ select option{background:#fff;color:var(--ink)}
 <script>
 const SUPABASE_URL='https://mhemzdxoywmmdptzwjdq.supabase.co';
 const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1oZW16ZHhveXdtbWRwdHp3amRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNzUwMjgsImV4cCI6MjA5MDg1MTAyOH0.L5J3qGc26ouxpKhaZVnz5k7zltPaECrQkFS44SOG0y4';
-const DEEPSEEK_KEY='sk-61ca2a7c2ebc40a282729a8feba68c12';
+const AI_API_URL = '/api/deepseek';
 let sb=null;
 
 /* ===== 币种 & 颜色 ===== */
@@ -1019,7 +1019,38 @@ function getCatMeta(cat){return CAT_META[cat]||{emoji:'📝',color:'#78716c',bg:
 function genId(){return'acc_'+Date.now()+'_'+Math.random().toString(36).slice(2,6)}
 function showToast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(type==='err'?'err':type==='warn'?'warn':'');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2800)}
 function setSS(state,msg){const dot=document.getElementById('syncDot'),txt=document.getElementById('syncText');if(!dot)return;dot.className='sync-dot'+(state?' '+state:'');txt.textContent=msg;const s=document.getElementById('syncStatus');if(s)s.textContent=msg}
+async function callLedgerAI(task, payload) {
+  if (!sb) {
+    throw new Error('Supabase 尚未初始化');
+  }
 
+  const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('请先登录');
+  }
+
+  const res = await fetch(AI_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + sessionData.session.access_token,
+    },
+    body: JSON.stringify({
+      task,
+      payload,
+    }),
+  });
+
+  const result = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(result.error || 'AI 请求失败');
+  }
+
+  return result;
+}
+  
 /* ===== 账户图标 HTML ===== */
 function accIconHtml(acc,sm){
   const sz=sm?'sm':'lg';
@@ -1808,14 +1839,62 @@ function showDetailModal(cat,ym){const[y,m]=ym.split('-');const list=data.record
 function closeDetailModal(e){if(!e||e.target===document.getElementById('detailModal'))document.getElementById('detailModal').style.display='none'}
 
 /* ===== AI ===== */
-async function aiParse(){const text=(document.getElementById('aiInput').value||'').trim();if(!text){showToast('请先输入描述','err');return}const btn=document.getElementById('aiParseBtn'),status=document.getElementById('aiStatus');btn.disabled=true;status.className='ai-status loading';status.textContent='识别中…';document.getElementById('aiPreview').classList.remove('show');const today=localDateStr();const prompt=`你是记账助手，从用户描述中提取所有记账信息，返回JSON数组，不要有其他文字。
-支出分类：吃饭、住宿、交通、学习工作、个人消费、资金流转
-收入来源：工资/收入、资金流转、其他
-账户：${getAccounts().map(a=>a.id+'='+a.name+'('+a.currency+')').join('、')}
-今天：${today}
-如果提到借给某人，desc=资金流转，type=expense，borrower=对方姓名
-格式：[{"type":"expense/income","amount":数字,"desc":"分类","note":"备注","wallet":"账户id","date":"YYYY-MM-DD","borrower":"借给谁(可选)"}]
-用户描述：${text}`;try{const res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+DEEPSEEK_KEY},body:JSON.stringify({model:'deepseek-chat',max_tokens:512,temperature:0,messages:[{role:'user',content:prompt}]})});if(!res.ok){const e=await res.json();throw new Error(e.error?.message||res.status)}const raw=(await res.json()).choices[0].message.content.trim();let parsed=JSON.parse(raw.replace(/```[\w]*/g,'').replace(/```/g,'').trim());if(!Array.isArray(parsed))parsed=[parsed];aiParsedResult=parsed;aiSingleWallet=parsed[0]?.wallet||getAccounts()[0]?.id||'wx';aiMultiWallets={};parsed.forEach((r,i)=>{aiMultiWallets[i]=r.wallet||getAccounts()[0]?.id||'wx'});renderAiPreview(parsed);document.getElementById('aiPreview').classList.add('show');status.className='ai-status ok';status.textContent=parsed.length>1?`识别到 ${parsed.length} 条，确认记录`:'识别完成，确认后直接记录'}catch(e){status.className='ai-status err';status.textContent='识别失败：'+(e.message||'请检查网络');console.warn(e)}btn.disabled=false}
+async function aiParse() {
+  const text = (document.getElementById('aiInput').value || '').trim();
+
+  if (!text) {
+    showToast('请先输入描述', 'err');
+    return;
+  }
+
+  const btn = document.getElementById('aiParseBtn');
+  const status = document.getElementById('aiStatus');
+
+  btn.disabled = true;
+  status.className = 'ai-status loading';
+  status.textContent = '识别中…';
+  document.getElementById('aiPreview').classList.remove('show');
+
+  try {
+    const result = await callLedgerAI('ledger_parse', {
+      text,
+      today: localDateStr(),
+      accounts: getAccounts().map(a => ({
+        id: a.id,
+        name: a.name,
+        currency: a.currency,
+      })),
+    });
+
+    let parsed = result.records || [];
+
+    if (!Array.isArray(parsed)) {
+      parsed = [];
+    }
+
+    aiParsedResult = parsed;
+    aiSingleWallet = parsed[0]?.wallet || getAccounts()[0]?.id || 'wx';
+    aiMultiWallets = {};
+
+    parsed.forEach((r, i) => {
+      aiMultiWallets[i] = r.wallet || getAccounts()[0]?.id || 'wx';
+    });
+
+    renderAiPreview(parsed);
+    document.getElementById('aiPreview').classList.add('show');
+
+    status.className = 'ai-status ok';
+    status.textContent = parsed.length > 1
+      ? `识别到 ${parsed.length} 条，确认记录`
+      : '识别完成，确认后直接记录';
+  } catch (e) {
+    status.className = 'ai-status err';
+    status.textContent = '识别失败：' + (e.message || '请检查网络');
+    console.warn(e);
+  }
+
+  btn.disabled = false;
+}
 function selectSingleWallet(w){aiSingleWallet=w;document.querySelectorAll('#pvWalletCaps .wcap').forEach(btn=>btn.classList.toggle('active',btn.dataset.w===w))}
 function selectMultiWallet(idx,w){aiMultiWallets[idx]=w;const card=document.querySelector(`.ai-multi-card[data-idx="${idx}"]`);if(card)card.querySelectorAll('.wcap').forEach(btn=>btn.classList.toggle('active',btn.dataset.w===w))}
 function renderAiPreview(records){const single=records.length===1;if(single){const r=records[0];const acc=getAccount(r.wallet||aiSingleWallet);document.getElementById('pvType').textContent=r.type==='expense'?'💸 支出':'💰 收入';document.getElementById('pvAmt').textContent=r.amount?fmtCur(acc?.currency||'CNY',r.amount):'—';document.getElementById('pvDesc').textContent=r.desc||'—';document.getElementById('pvNote').textContent=r.borrower?`借给：${r.borrower}`:(r.note||'—');document.getElementById('pvDate').textContent=r.date?fmtDate(r.date):fmtDate(localDateStr());renderWalletCaps(document.getElementById('pvWalletCaps'),aiSingleWallet,'selectSingleWallet');document.getElementById('aiSinglePreview').style.display='block';document.getElementById('aiMultiPreview').style.display='none';document.getElementById('aiConfirmBtn').textContent='确认记录 →'}else{document.getElementById('aiSinglePreview').style.display='none';document.getElementById('aiMultiPreview').innerHTML='<div class="ai-multi-grid">'+records.map((r,i)=>{const iw=r.wallet||getAccounts()[0]?.id||'wx';const acc=getAccount(iw);return`<div class="ai-multi-card" data-idx="${i}"><div class="ai-multi-top"><span class="ai-multi-badge ${r.type}">${r.type==='expense'?'支出':'收入'}</span><span class="ai-multi-amt">${r.amount?fmtCur(acc?.currency||'CNY',r.amount):'—'}</span></div><div class="ai-multi-detail">${r.desc||'—'}${r.borrower?`<br>借给：${r.borrower}`:''}${r.note?`<br><span style="color:var(--ink3)">${r.note}</span>`:''}<br>${r.date?fmtDate(r.date):'今天'}</div><div class="ai-multi-caps">${getAccounts().map(a=>`<span class="wcap${a.id===iw?' active':''}" data-w="${a.id}" onclick="selectMultiWallet(${i},'${a.id}')">${esc(a.abbr)} ${a.name}</span>`).join('')}</div></div>`}).join('')+'</div>';document.getElementById('aiMultiPreview').style.display='block';document.getElementById('aiConfirmBtn').textContent=`全部记录（${records.length} 笔）→`}}
@@ -2010,19 +2089,63 @@ function renderFinanceInsights(){
   Object.entries(data.categoryBudgets||{}).forEach(([cat,budget])=>{const used=byCat[cat]||0;if(budget>0&&used>0){const pct=Math.round(used/budget*100);if(pct>=80)insights.push({cls:pct>=100?'bad':'warn',txt:`「${cat}」分类预算 ${fmt(budget)}，已使用 ${pct}%。`})}});
   el.innerHTML=insights.map(x=>`<div class="insight-item ${x.cls}">${x.txt}</div>`).join('');
 }
-async function aiFinanceInsight(){
-  const box=document.getElementById('aiFinanceInsightText');if(!box)return;
-  if(!DEEPSEEK_KEY||DEEPSEEK_KEY.length<10){box.textContent='未配置 DeepSeek Key，无法生成 AI 总结。';return}
-  const ym=localYM();const monthRecords=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');
-  if(!monthRecords.length){box.textContent='本月没有记录，无法生成 AI 总结。';return}
-  box.textContent='AI 正在分析中…';
-  const simple=monthRecords.map(r=>({type:r.type,amt:r.amt,desc:r.desc,date:r.date,note:r.note||''}));
-  const prompt=`你是个人财务分析助手。请根据本月记账数据输出简短、可执行的中文结论。要求：1. 不要输出表格；2. 分析本月收入、支出、净收支；3. 找出最大支出分类；4. 如果有异常或预算风险，请提醒；5. 最后给 2 条具体建议。数据：${JSON.stringify(simple)}`;
-  try{
-    const res=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+DEEPSEEK_KEY},body:JSON.stringify({model:'deepseek-chat',max_tokens:700,temperature:0.2,messages:[{role:'user',content:prompt}]})});
-    if(!res.ok)throw new Error(res.status);
-    box.textContent=((await res.json()).choices[0].message.content||'').trim();
-  }catch(e){box.textContent='AI 总结失败，请检查网络或 DeepSeek Key。'}
+async function aiFinanceInsight() {
+  const box = document.getElementById('aiFinanceInsightText');
+  if (!box) return;
+
+  const ym = localYM();
+  const monthRecords = data.records.filter(r => r.date?.startsWith(ym) && r.type !== 'transfer');
+
+  if (!monthRecords.length) {
+    box.textContent = '本月没有记录，无法生成 AI 总结。';
+    return;
+  }
+
+  const incomeRecords = monthRecords.filter(r => r.type === 'income');
+  const expenseRecords = monthRecords.filter(r => r.type === 'expense');
+
+  const income = incomeRecords.reduce((s, r) => s + r.amt, 0);
+  const expense = expenseRecords.reduce((s, r) => s + r.amt, 0);
+
+  const categorySummary = {};
+  expenseRecords.forEach(r => {
+    const cat = r.desc || '未备注';
+    categorySummary[cat] = (categorySummary[cat] || 0) + r.amt;
+  });
+
+  const topCategory = Object.entries(categorySummary)
+    .sort((a, b) => b[1] - a[1])[0] || null;
+
+  const summary = {
+    month: ym,
+    recordCount: monthRecords.length,
+    income,
+    expense,
+    net: income - expense,
+    categorySummary,
+    topCategory: topCategory
+      ? {
+          name: topCategory[0],
+          amount: topCategory[1],
+          percent: expense > 0 ? Math.round(topCategory[1] / expense * 100) : 0,
+        }
+      : null,
+    totalBudget: data.budget || 0,
+    totalBudgetUsedPercent: data.budget > 0 ? Math.round(expense / data.budget * 100) : null,
+    categoryBudgets: data.categoryBudgets || {},
+  };
+
+  box.textContent = 'AI 正在分析中…';
+
+  try {
+    const result = await callLedgerAI('finance_summary', {
+      summary,
+    });
+
+    box.textContent = result.text || 'AI 没有返回内容。';
+  } catch (e) {
+    box.textContent = 'AI 总结失败：' + (e.message || '请检查网络或接口配置');
+  }
 }
 
 /* ===== 设置 ===== */
