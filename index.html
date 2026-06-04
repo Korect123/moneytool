@@ -1800,14 +1800,16 @@ function renderTrendChart(mo){
 }
 
 function renderOverview(){
-  // 总资产按币种分组
-  const byCurrency={};
-  getAccounts().forEach(a=>{const c=a.currency;if(!byCurrency[c])byCurrency[c]=0;byCurrency[c]+=(data.balances[a.id]||0)});
+  // 总资产按币种分组（投资账户不计入——钱锁在投资里不能随时取用，单独显示）
+  const byCurrency={},investByCur={};
+  getAccounts().forEach(a=>{const c=a.currency;const bal=data.balances[a.id]||0;if(a.type==='invest'){investByCur[c]=(investByCur[c]||0)+bal}else{byCurrency[c]=(byCurrency[c]||0)+bal}});
   const assetEl=document.getElementById('heroAssetVals');
   if(assetEl){
     const entries=Object.entries(byCurrency).filter(([,v])=>v!==0);
     if(entries.length===0){assetEl.innerHTML=`<div class="hero-asset-val">¥ 0.00</div>`}
     else{assetEl.innerHTML=entries.map(([c,v],i)=>`<div class="hero-asset-val" style="${i>0?'font-size:20px;margin-top:4px':''}">${fmtCur(c,v)}</div>`).join('')}
+    const investEntries=Object.entries(investByCur).filter(([,v])=>v!==0);
+    if(investEntries.length){assetEl.innerHTML+=`<div class="hero-asset-sub">投资 ${investEntries.map(([c,v])=>fmtCur(c,v)).join(' + ')}（不计入总资产）</div>`}
   }
   // 侧栏余额
   renderSidebarBalances();
