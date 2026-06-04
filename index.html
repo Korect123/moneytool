@@ -204,6 +204,23 @@ html,body{height:100%;background:var(--paper);font-family:var(--font);color:var(
 .amount-sym{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:17px;color:var(--ink3);pointer-events:none;white-space:nowrap}
 input[type=number],input[type=text],input[type=date],input[type=email],input[type=password],input[type=search],select{width:100%;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:14px;background:var(--paper);color:var(--ink);font-family:var(--font);padding:10px 12px;appearance:none;-webkit-appearance:none;transition:border-color .2s,box-shadow .2s,background .15s;outline:none}
 .amount-wrap input{padding-left:38px;font-size:20px;font-weight:600;letter-spacing:-.3px}
+.amount-wrap.has-calc input{padding-right:46px}
+.calc-btn-inline{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:32px;height:32px;border:1px solid var(--border2);background:var(--surface);border-radius:8px;cursor:pointer;font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0;transition:all .15s}
+.calc-btn-inline:hover{background:var(--gold-bg);border-color:var(--gold)}
+.calc-btn-inline:active{transform:translateY(-50%) scale(.92)}
+.calc-modal{max-width:330px}
+.calc-display{background:var(--card);border-radius:var(--r-sm);padding:14px 16px;margin-bottom:14px;text-align:right;min-height:62px;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.calc-expr{font-size:13px;color:var(--ink3);min-height:16px;font-variant-numeric:tabular-nums;word-break:break-all;letter-spacing:.3px}
+.calc-result{font-size:32px;font-weight:600;color:var(--ink);letter-spacing:-.6px;font-variant-numeric:tabular-nums;line-height:1;word-break:break-all}
+.calc-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:56px;gap:8px}
+.calc-key{border:1px solid var(--border);border-radius:var(--r-sm);background:var(--surface);font-size:20px;font-weight:500;color:var(--ink);cursor:pointer;font-family:var(--font);transition:transform .1s,background .12s;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+.calc-key:hover{background:var(--gold-bg)}
+.calc-key:active{transform:scale(.94)}
+.calc-key.op{color:var(--gold-t);font-weight:600}
+.calc-key.fn{background:var(--card);color:var(--ink2);font-size:17px}
+.calc-key.eq{background:var(--gold);color:#fff;grid-row:span 2;font-size:24px;border-color:var(--gold)}
+.calc-key.eq:hover{opacity:.9;background:var(--gold)}
+.calc-key.zero{grid-column:span 2}
 input:focus,select:focus{border-color:var(--gold);background:#fff;box-shadow:0 0 0 3px rgba(160,130,50,.1);outline:none}
 input::placeholder{color:var(--ink3)}
 select option{background:#fff;color:var(--ink)}
@@ -767,7 +784,7 @@ select option{background:#fff;color:var(--ink)}
                 <button class="type-btn" id="btnMov" onclick="setType('move')">挪钱</button>
               </div>
               <div id="normalForm">
-                <div class="form-group"><label class="form-label">金额</label><div class="amount-wrap"><span class="amount-sym" id="amountSym">¥</span><input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01"></div></div>
+                <div class="form-group"><label class="form-label">金额</label><div class="amount-wrap has-calc"><span class="amount-sym" id="amountSym">¥</span><input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01"><button type="button" class="calc-btn-inline" onclick="openCalc('amount')" aria-label="计算器">🧮</button></div></div>
                 <div class="cat-grid-label">选择分类</div>
                 <div class="cat-grid" id="catGrid"></div>
                 <div class="loan-field" id="loanField" style="display:none"><label class="form-label">借给谁？</label><input type="text" id="borrower" placeholder="请输入..."></div>
@@ -780,7 +797,7 @@ select option{background:#fff;color:var(--ink)}
                 <button class="add-more-btn" id="addMoreBtn" onclick="addExtraRow(0)">＋ 再记一笔</button>
               </div>
               <div class="move-form" id="moveForm">
-                <div class="form-group"><label class="form-label">挪多少钱</label><div class="amount-wrap"><span class="amount-sym" id="moveAmtSym">¥</span><input type="number" id="moveAmt" placeholder="0.00" min="0.01" step="0.01"></div></div>
+                <div class="form-group"><label class="form-label">挪多少钱</label><div class="amount-wrap has-calc"><span class="amount-sym" id="moveAmtSym">¥</span><input type="number" id="moveAmt" placeholder="0.00" min="0.01" step="0.01"><button type="button" class="calc-btn-inline" onclick="openCalc('moveAmt')" aria-label="计算器">🧮</button></div></div>
                 <div class="move-row">
                   <div class="form-group"><label class="form-label">从哪里</label><select id="moveFrom" onchange="updateAmtSym('moveFrom','moveAmtSym')"></select></div>
                   <div class="move-arrow">→</div>
@@ -878,12 +895,40 @@ select option{background:#fff;color:var(--ink)}
   <div class="modal"><div class="modal-head"><div><div class="modal-title" id="modalTitle"></div><div class="modal-sub" id="modalSub"></div></div><button class="modal-close" onclick="closeDetailModal()">✕</button></div><div class="modal-body"><div class="modal-total" id="modalTotal"></div><div id="modalRecords"></div></div></div>
 </div>
 
+<div class="modal-overlay" id="calcModal" style="display:none" onclick="closeCalc(event)">
+  <div class="modal calc-modal">
+    <div class="modal-head"><div><div class="modal-title">计算器</div><div class="modal-sub">算好后按 = 填入金额</div></div><button class="modal-close" onclick="closeCalc()">✕</button></div>
+    <div class="modal-body">
+      <div class="calc-display"><div class="calc-expr" id="calcExpr">&nbsp;</div><div class="calc-result" id="calcResult">0</div></div>
+      <div class="calc-grid">
+        <button class="calc-key fn" onclick="calcKey('C')">C</button>
+        <button class="calc-key op" onclick="calcKey('÷')">÷</button>
+        <button class="calc-key op" onclick="calcKey('×')">×</button>
+        <button class="calc-key fn" onclick="calcKey('⌫')">⌫</button>
+        <button class="calc-key" onclick="calcKey('7')">7</button>
+        <button class="calc-key" onclick="calcKey('8')">8</button>
+        <button class="calc-key" onclick="calcKey('9')">9</button>
+        <button class="calc-key op" onclick="calcKey('-')">−</button>
+        <button class="calc-key" onclick="calcKey('4')">4</button>
+        <button class="calc-key" onclick="calcKey('5')">5</button>
+        <button class="calc-key" onclick="calcKey('6')">6</button>
+        <button class="calc-key op" onclick="calcKey('+')">+</button>
+        <button class="calc-key" onclick="calcKey('1')">1</button>
+        <button class="calc-key" onclick="calcKey('2')">2</button>
+        <button class="calc-key" onclick="calcKey('3')">3</button>
+        <button class="calc-key eq" onclick="calcKey('=')">=</button>
+        <button class="calc-key zero" onclick="calcKey('0')">0</button>
+        <button class="calc-key" onclick="calcKey('.')">.</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="editModal" style="display:none" onclick="closeEditModal(event)">
   <div class="modal">
     <div class="modal-head"><div><div class="modal-title">编辑记录</div><div class="modal-sub">修改后点击保存</div></div><button class="modal-close" onclick="closeEditModal()">✕</button></div>
     <div class="modal-body">
       <div class="edit-type-toggle"><button class="edit-type-btn exp-active" id="editBtnExp" onclick="setEditType('expense')">支出</button><button class="edit-type-btn" id="editBtnInc" onclick="setEditType('income')">收入</button></div>
-      <div class="edit-field"><label class="edit-label">金额</label><div class="amount-wrap"><span class="amount-sym" id="editAmtSym">¥</span><input type="number" id="editAmt" min="0.01" step="0.01" style="padding-left:38px;font-size:17px;font-weight:600"></div></div>
+      <div class="edit-field"><label class="edit-label">金额</label><div class="amount-wrap has-calc"><span class="amount-sym" id="editAmtSym">¥</span><input type="number" id="editAmt" min="0.01" step="0.01" style="padding-left:38px;font-size:17px;font-weight:600"><button type="button" class="calc-btn-inline" onclick="openCalc('editAmt')" aria-label="计算器">🧮</button></div></div>
       <div class="edit-field"><label class="edit-label">选择分类</label><div class="cat-grid" id="editCatGrid" style="grid-template-columns:repeat(3,1fr)"></div></div>
       <div class="loan-field" id="editLoanField" style="display:none;margin-bottom:13px"><label class="form-label">借给谁？</label><input type="text" id="editBorrower"></div>
       <div class="edit-field" id="editNoteFieldWrap" style="display:none"><label class="edit-label">备注</label><input type="text" id="editNote"></div>
@@ -1392,6 +1437,23 @@ function saveEdit(){const r=data.records.find(x=>x.id===editingId);if(!r)return;
   data.balances[newWallet]=(data.balances[newWallet]||0)+newAmt;
 }const isLoan=editType==='expense'&&editSelectedCat==='资金流转'&&newBorrower!=='';Object.assign(r,{type:editType,amt:newAmt,desc:editSelectedCat,wallet:actualWallet,date:newDate,...(newNote?{note:newNote}:{note:undefined}),...(redirected?{redirected:true}:{redirected:undefined}),...(isLoan?{loan:true,borrower:newBorrower,loanStatus:'pending'}:{loan:undefined,borrower:undefined,loanStatus:undefined})});Object.keys(r).forEach(k=>r[k]===undefined&&delete r[k]);debouncedSync();closeEditModal();renderOverview();renderRecords();renderAddPage();showToast('✓ 已保存修改')}
 function closeEditModal(e){if(!e||e.target===document.getElementById('editModal'))document.getElementById('editModal').style.display='none'}
+/* ===== 内嵌计算器 ===== */
+let calcTarget='',calcExprStr='';
+function openCalc(targetId){calcTarget=targetId;const cur=document.getElementById(targetId)?.value||'';calcExprStr=(cur&&!isNaN(parseFloat(cur)))?String(parseFloat(cur)):'';renderCalc();document.getElementById('calcModal').style.display='flex'}
+function closeCalc(e){if(!e||e.target===document.getElementById('calcModal'))document.getElementById('calcModal').style.display='none'}
+function calcEval(expr){if(!expr)return null;const js=expr.replace(/×/g,'*').replace(/÷/g,'/');if(!/^[0-9+\-*/.() ]+$/.test(js))return null;try{const v=Function('"use strict";return ('+js+')')();return(typeof v==='number'&&isFinite(v))?v:null}catch{return null}}
+function fmtCalcNum(v){return Number.isInteger(v)?String(v):String(Math.round(v*100)/100)}
+function renderCalc(){document.getElementById('calcExpr').textContent=calcExprStr||'\u00a0';const v=calcEval(calcExprStr);document.getElementById('calcResult').textContent=v===null?(calcExprStr?'…':'0'):fmtCalcNum(v)}
+function calcKey(k){
+  if(k==='C'){calcExprStr='';return renderCalc()}
+  if(k==='⌫'){calcExprStr=calcExprStr.slice(0,-1);return renderCalc()}
+  if(k==='='){const v=calcEval(calcExprStr);if(v===null||v<0){showToast('算式无效','err');return}const inp=document.getElementById(calcTarget);if(inp){inp.value=fmtCalcNum(Math.round(v*100)/100);inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}))}document.getElementById('calcModal').style.display='none';return}
+  const ops='+-×÷';
+  if(ops.includes(k)){if(!calcExprStr&&k!=='-')return;if(ops.includes(calcExprStr.slice(-1)))calcExprStr=calcExprStr.slice(0,-1);calcExprStr+=k;return renderCalc()}
+  if(k==='.'){const seg=calcExprStr.split(/[+\-×÷]/).pop();if(seg.includes('.'))return;if(!seg)calcExprStr+='0';calcExprStr+='.';return renderCalc()}
+  calcExprStr+=k;renderCalc()
+}
+document.addEventListener('keydown',e=>{if(document.getElementById('calcModal')?.style.display!=='flex')return;const k=e.key;if(/[0-9]/.test(k))calcKey(k);else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='.')calcKey('.');else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')closeCalc()});
 
 /* ===== 批量记录行 ===== */
 function addExtraRow(afterIndex){
