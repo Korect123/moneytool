@@ -257,8 +257,10 @@ input[type=number],input[type=text],input[type=date],input[type=email],input[typ
 .cd-rinfo{flex:1;min-width:0}
 .cd-rdesc{font-size:13px;color:var(--ink);font-weight:500}
 .cd-rsub{font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cd-ramt{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0}
+.cd-ramt-wrap{display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0}
+.cd-ramt{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
 .cd-ramt.expense{color:var(--red-t)}.cd-ramt.income{color:var(--gold-t)}.cd-ramt.transfer{color:var(--ink2)}
+.cd-rbal{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums;white-space:nowrap}
 .cd-empty{text-align:center;color:var(--ink3);font-size:12px;padding:20px 0}
 .cd-addbox{border-top:1px dashed var(--border2);margin-top:10px;padding-top:14px}
 .cd-addtitle{font-size:13px;color:var(--ink2);font-weight:600;margin-bottom:11px}
@@ -328,6 +330,37 @@ select option{background:#fff;color:var(--ink)}
 .ai-multi-amt{font-size:17px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .ai-multi-detail{font-size:11px;color:var(--ink2);line-height:1.7;margin-bottom:7px}
 .ai-preview-actions{display:flex;gap:8px}
+/* ===== 问账本 ===== */
+.ask-card{background:linear-gradient(135deg,#fff 0%,#faf6ea 100%);border:1.5px solid rgba(160,130,50,.16);border-radius:var(--r);padding:15px 18px;margin-bottom:16px}
+.ask-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.ask-title{font-size:15px;font-weight:700;color:var(--gold-t)}
+.ask-sub{font-size:11px;color:var(--ink3)}
+.ask-input-row{display:flex;gap:8px;align-items:stretch}
+.ask-input-row input{flex:1}
+.ask-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.ask-chip{font-size:12px;color:var(--ink2);background:var(--paper);border:1px solid var(--border2);border-radius:var(--r-sm);padding:5px 10px;cursor:pointer;font-family:var(--font);transition:all .15s}
+.ask-chip:hover{border-color:var(--gold);color:var(--gold-t);background:var(--gold-bg)}
+.ask-result{margin-top:14px;border-top:1px solid rgba(160,130,50,.12);padding-top:13px}
+.ask-loading{font-size:13px;color:var(--amber-t)}
+.ask-err{font-size:13px;color:var(--red-t)}
+.ask-answer{margin-bottom:12px}
+.ask-q{font-size:12px;color:var(--ink3);margin-bottom:4px}
+.ask-a{font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.3px;font-variant-numeric:tabular-nums;line-height:1.4}
+.ask-bd{display:flex;flex-direction:column;gap:7px;margin-bottom:13px}
+.ask-bd-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.ask-bd-k{width:76px;flex-shrink:0;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ask-bd-bar{flex:1;height:7px;background:var(--card);border-radius:4px;overflow:hidden}
+.ask-bd-bar>span{display:block;height:100%;background:var(--gold);border-radius:4px}
+.ask-bd-v{width:88px;text-align:right;flex-shrink:0;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+.ask-list{display:flex;flex-direction:column;max-height:300px;overflow-y:auto}
+.ask-row{display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px solid var(--border)}
+.ask-row:last-child{border-bottom:none}
+.ask-rinfo{flex:1;min-width:0}
+.ask-rdesc{font-size:13px;color:var(--ink);font-weight:500}
+.ask-rsub{font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ask-ramt{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0}
+.ask-ramt.expense{color:var(--red-t)}.ask-ramt.income{color:var(--gold-t)}
+.ask-more{font-size:11px;color:var(--ink3);text-align:center;padding:8px 0 2px}
 .ai-confirm-btn{padding:9px 20px;border:none;border-radius:var(--r-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);background:var(--gold);color:#fff;transition:opacity .15s}
 .ai-confirm-btn:hover{opacity:.85}
 .ai-reset-btn{background:var(--card);color:var(--ink2);border:1px solid var(--border)}
@@ -799,6 +832,12 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
             <div class="hero-budget-daily" id="budgetDaily"></div>
           </div>
         </div>
+        <div class="ask-card" id="askCard">
+          <div class="ask-head"><span class="ask-title">✦ 问账本</span><span class="ask-sub">用大白话问，自动从记录里调数据</span></div>
+          <div class="ask-input-row"><input type="text" id="askInput" placeholder="例：6月18到21号花了多少？" onkeydown="if(event.key==='Enter')aiAsk()"><button class="ai-btn" id="askBtn" onclick="aiAsk()">问</button></div>
+          <div class="ask-chips" id="askChips"></div>
+          <div class="ask-result" id="askResult" style="display:none"></div>
+        </div>
         <div class="loan-alert" id="recurringAlert" style="display:none">
           <div class="loan-alert-head"><div class="loan-alert-title">⏰ 即将到期</div><div class="loan-alert-total" id="recurringAlertTotal"></div></div>
           <div id="recurringDueList"></div>
@@ -852,7 +891,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
                 <button class="type-btn" id="btnMov" onclick="setType('move')">挪钱</button>
               </div>
               <div id="normalForm">
-                <div class="form-group"><label class="form-label">金额</label><div class="amount-wrap has-calc"><span class="amount-sym" id="amountSym">¥</span><input type="number" id="amount" placeholder="0.00" min="0.01" step="0.01"><button type="button" class="calc-btn-inline" onclick="openCalc('amount')" aria-label="计算器">🧮</button></div></div>
+                <div class="form-group"><label class="form-label">金额</label><div class="amount-wrap has-calc"><span class="amount-sym" id="amountSym">¥</span><input type="text" inputmode="decimal" id="amount" placeholder="0.00" oninput="sanitizeAmt(this)"><button type="button" class="calc-btn-inline" onclick="openCalc('amount')" aria-label="计算器">🧮</button></div></div>
                 <div class="cat-grid-label">选择分类</div>
                 <div class="cat-grid" id="catGrid"></div>
                 <div class="loan-field" id="loanField" style="display:none"><label class="form-label">借给谁？</label><input type="text" id="borrower" placeholder="请输入..."></div>
@@ -865,7 +904,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
                 <button class="add-more-btn" id="addMoreBtn" onclick="addExtraRow(0)">＋ 再记一笔</button>
               </div>
               <div class="move-form" id="moveForm">
-                <div class="form-group"><label class="form-label">挪多少钱</label><div class="amount-wrap has-calc"><span class="amount-sym" id="moveAmtSym">¥</span><input type="number" id="moveAmt" placeholder="0.00" min="0.01" step="0.01"><button type="button" class="calc-btn-inline" onclick="openCalc('moveAmt')" aria-label="计算器">🧮</button></div></div>
+                <div class="form-group"><label class="form-label">挪多少钱</label><div class="amount-wrap has-calc"><span class="amount-sym" id="moveAmtSym">¥</span><input type="text" inputmode="decimal" id="moveAmt" placeholder="0.00" oninput="sanitizeAmt(this)"><button type="button" class="calc-btn-inline" onclick="openCalc('moveAmt')" aria-label="计算器">🧮</button></div></div>
                 <div class="move-row">
                   <div class="form-group"><label class="form-label">从哪里</label><select id="moveFrom" onchange="updateAmtSym('moveFrom','moveAmtSym')"></select></div>
                   <div class="move-arrow">→</div>
@@ -975,7 +1014,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
         <div class="edit-type-toggle"><button class="edit-type-btn exp-active" id="qaBtnExp" onclick="setQaType('expense')">支出</button><button class="edit-type-btn" id="qaBtnInc" onclick="setQaType('income')">收入</button></div>
         <div class="qa-cats" id="qaCats"></div>
         <div class="qa-row2">
-          <div class="amount-wrap has-calc"><span class="amount-sym" id="qaAmtSym">¥</span><input type="number" id="qaAmt" placeholder="0.00" min="0.01" step="0.01"><button type="button" class="calc-btn-inline" onclick="openCalc('qaAmt')" aria-label="计算器">🧮</button></div>
+          <div class="amount-wrap has-calc"><span class="amount-sym" id="qaAmtSym">¥</span><input type="text" inputmode="decimal" id="qaAmt" placeholder="0.00" oninput="sanitizeAmt(this)"><button type="button" class="calc-btn-inline" onclick="openCalc('qaAmt')" aria-label="计算器">🧮</button></div>
           <input type="date" id="qaDate">
         </div>
         <input type="text" id="qaNote" placeholder="备注（可选）">
@@ -1528,11 +1567,12 @@ function saveEdit(){const r=data.records.find(x=>x.id===editingId);if(!r)return;
 function closeEditModal(e){if(!e||e.target===document.getElementById('editModal'))document.getElementById('editModal').style.display='none'}
 /* ===== 内嵌计算器 ===== */
 let calcTarget='',calcExprStr='';
+function sanitizeAmt(el){let v=el.value.replace(/[。．，,]/g,'.').replace(/[^0-9.]/g,'');const i=v.indexOf('.');if(i!==-1){v=v.slice(0,i+1)+v.slice(i+1).replace(/\./g,'').slice(0,2)}el.value=v}
 function openCalc(targetId){calcTarget=targetId;const cur=document.getElementById(targetId)?.value||'';calcExprStr=(cur&&!isNaN(parseFloat(cur)))?String(parseFloat(cur)):'';renderCalc();document.getElementById('calcModal').style.display='flex'}
 function closeCalc(e){if(!e||e.target===document.getElementById('calcModal'))document.getElementById('calcModal').style.display='none'}
 function calcEval(expr){if(!expr)return null;const js=expr.replace(/×/g,'*').replace(/÷/g,'/');if(!/^[0-9+\-*/.() ]+$/.test(js))return null;try{const v=Function('"use strict";return ('+js+')')();return(typeof v==='number'&&isFinite(v))?v:null}catch{return null}}
 function fmtCalcNum(v){return Number.isInteger(v)?String(v):String(Math.round(v*100)/100)}
-function renderCalc(){document.getElementById('calcExpr').textContent=calcExprStr||'\u00a0';const v=calcEval(calcExprStr);document.getElementById('calcResult').textContent=v===null?(calcExprStr?'…':'0'):fmtCalcNum(v)}
+function renderCalc(){document.getElementById('calcExpr').textContent=calcExprStr||'\u00a0';const v=calcEval(calcExprStr);let out;if(v===null){out=calcExprStr?'…':'0'}else{out=fmtCalcNum(v);const seg=calcExprStr.split(/[+\-×÷]/).pop();if(/\.\d*$/.test(seg)&&!/\.\d*[1-9]/.test(seg))out=seg}document.getElementById('calcResult').textContent=out}
 function calcKey(k){
   if(k==='C'){calcExprStr='';return renderCalc()}
   if(k==='⌫'){calcExprStr=calcExprStr.slice(0,-1);return renderCalc()}
@@ -1542,7 +1582,7 @@ function calcKey(k){
   if(k==='.'){const seg=calcExprStr.split(/[+\-×÷]/).pop();if(seg.includes('.'))return;if(!seg)calcExprStr+='0';calcExprStr+='.';return renderCalc()}
   calcExprStr+=k;renderCalc()
 }
-document.addEventListener('keydown',e=>{if(document.getElementById('calcModal')?.style.display!=='flex')return;const k=e.key;if(/[0-9]/.test(k))calcKey(k);else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='.')calcKey('.');else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')closeCalc()});
+document.addEventListener('keydown',e=>{if(document.getElementById('calcModal')?.style.display!=='flex')return;const k=e.key;if(/[0-9]/.test(k))calcKey(k);else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='.'||k===','||k==='。'||k==='．'||k==='，'||k==='Decimal'||e.code==='NumpadDecimal')calcKey('.');else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')closeCalc()});
 /* ===== 账户明细弹窗 + 补记 ===== */
 let cardWallet='',cardYM='',qaType='expense',qaCat='';
 function openCardDetail(walletId){cardWallet=walletId;cardYM=localYM();qaType='expense';qaCat='';const acc=getAccount(walletId);if(!acc)return;document.getElementById('qaAmt').value='';document.getElementById('qaNote').value='';document.getElementById('qaDate').value=localDateStr();document.getElementById('qaAmtSym').textContent=curSym(acc.currency);setQaType('expense');renderCardDetail();document.getElementById('cardModal').style.display='flex'}
@@ -1553,20 +1593,37 @@ function renderCardDetail(){
   const acc=getAccount(cardWallet);if(!acc)return;
   const bal=data.balances[cardWallet]||0;
   document.getElementById('cdHead').innerHTML=`<span class="w-icon lg" style="background:${acc.color};color:#fff">${esc(acc.abbr)}</span><div><div style="font-size:15px;font-weight:600;color:var(--ink)">${esc(acc.name)}</div><div style="font-size:11px;color:var(--ink3)">${acc.currency}</div></div><div class="cd-bal"><div class="cd-bal-label">当前余额</div><div class="cd-bal-val">${fmtCur(acc.currency,bal)}</div></div>`;
+  // 计算每笔交易"扣款/入账后"的余额：以当前余额为基准，按时间倒序逐笔回退
+  const balAfter=walletBalanceAfterMap(cardWallet,bal);
   const recs=cardWalletRecords(cardYM).slice().sort((a,b)=>((b.date||'').localeCompare(a.date||''))||(b.id-a.id));
   const spent=recs.filter(r=>r.type==='expense'&&r.wallet===cardWallet).reduce((sm,r)=>sm+r.amt,0);
   const parts=cardYM.split('-');const curYM=localYM();
   document.getElementById('cdMonth').innerHTML=`<button class="cd-month-btn" onclick="changeCardMonth(-1)">‹</button><div class="cd-month-label">${parts[0]}年${parseInt(parts[1])}月<span class="cd-month-sum">${recs.length} 笔 · 支出 ${fmtCur(acc.currency,spent)}</span></div><button class="cd-month-btn" onclick="changeCardMonth(1)" ${cardYM>=curYM?'disabled':''}>›</button>`;
-  document.getElementById('cdList').innerHTML=recs.length?recs.map(r=>cardRowHTML(r,acc)).join(''):'<div class="cd-empty">本月该账户暂无记录</div>';
+  document.getElementById('cdList').innerHTML=recs.length?recs.map(r=>cardRowHTML(r,acc,balAfter)).join(''):'<div class="cd-empty">本月该账户暂无记录</div>';
   renderQaCats();
 }
-function cardRowHTML(r,acc){
+// 该笔记录对指定钱包余额的影响（正=入账，负=扣款）
+function walletEffect(r,walletId){
+  if(r.type==='transfer'){if(r.fromWallet===walletId)return -r.amt;if(r.toWallet===walletId)return r.amt;return 0}
+  if(r.wallet!==walletId)return 0;
+  return r.type==='income'?r.amt:-r.amt;
+}
+// 以当前余额为基准，按时间倒序回退，得到每笔交易后的余额 {recordId: 余额}
+function walletBalanceAfterMap(walletId,curBal){
+  const all=data.records.filter(r=>r.wallet===walletId||r.fromWallet===walletId||r.toWallet===walletId)
+    .slice().sort((a,b)=>((b.date||'').localeCompare(a.date||''))||(b.id-a.id));
+  const map={};let after=curBal;
+  for(const r of all){map[r.id]=after;after-=walletEffect(r,walletId)}
+  return map;
+}
+function cardRowHTML(r,acc,balAfter){
   const isTransfer=r.type==='transfer';
   const cat=isTransfer?'资金流转':(r.desc||'未备注');const m=getCatMeta(cat);
   let desc,sub,sign,cls;
   if(isTransfer){const fa=getAccount(r.fromWallet),ta=getAccount(r.toWallet);const out=r.fromWallet===cardWallet;desc=`${fa?fa.name:'?'}→${ta?ta.name:'?'}`;sub='挪钱 · '+fmtDate(r.date);sign=out?'-':'+';cls='transfer'}
   else{desc=r.desc||'未备注';sub=(r.note?esc(r.note)+' · ':'')+fmtDate(r.date);sign=r.type==='income'?'+':'-';cls=r.type}
-  return`<div class="cd-row"><div class="cd-ico" style="background:${m.bg};color:${m.color}">${catSvg(cat)}</div><div class="cd-rinfo"><div class="cd-rdesc">${esc(desc)}</div><div class="cd-rsub">${sub}</div></div><div class="cd-ramt ${cls}">${sign}${fmtCur(acc.currency,r.amt)}</div></div>`;
+  const balHtml=(balAfter&&balAfter[r.id]!=null)?`<div class="cd-rbal">余 ${fmtCur(acc.currency,balAfter[r.id])}</div>`:'';
+  return`<div class="cd-row"><div class="cd-ico" style="background:${m.bg};color:${m.color}">${catSvg(cat)}</div><div class="cd-rinfo"><div class="cd-rdesc">${esc(desc)}</div><div class="cd-rsub">${sub}</div></div><div class="cd-ramt-wrap"><div class="cd-ramt ${cls}">${sign}${fmtCur(acc.currency,r.amt)}</div>${balHtml}</div></div>`;
 }
 function setQaType(t){qaType=t;qaCat='';document.getElementById('qaBtnExp').className='edit-type-btn'+(t==='expense'?' exp-active':'');document.getElementById('qaBtnInc').className='edit-type-btn'+(t==='income'?' inc-active':'');renderQaCats()}
 function renderQaCats(){const cats=CATS[qaType]||[];const el=document.getElementById('qaCats');if(!el)return;el.innerHTML=cats.map(c=>`<button class="qa-chip${qaCat===c?' active':''}" onclick="selectQaCat('${c}')">${catSvg(c)}<span>${c}</span></button>`).join('')}
@@ -1994,6 +2051,7 @@ function renderTrendChart(mo){
 }
 
 function renderOverview(){
+  renderAskChips();
   // 总资产按币种分组（投资账户不计入——钱锁在投资里不能随时取用，单独显示）
   const byCurrency={},investByCur={};
   getAccounts().forEach(a=>{const c=a.currency;const bal=data.balances[a.id]||0;if(a.type==='invest'){investByCur[c]=(investByCur[c]||0)+bal}else{byCurrency[c]=(byCurrency[c]||0)+bal}});
@@ -2189,6 +2247,67 @@ function selectMultiWallet(idx,w){aiMultiWallets[idx]=w;const card=document.quer
 function renderAiPreview(records){const single=records.length===1;if(single){const r=records[0];const acc=getAccount(r.wallet||aiSingleWallet);document.getElementById('pvType').textContent=r.type==='expense'?'💸 支出':'💰 收入';document.getElementById('pvAmt').textContent=r.amount?fmtCur(acc?.currency||'CNY',r.amount):'—';document.getElementById('pvDesc').textContent=r.desc||'—';document.getElementById('pvNote').textContent=r.borrower?`借给：${r.borrower}`:(r.note||'—');document.getElementById('pvDate').textContent=r.date?fmtDate(r.date):fmtDate(localDateStr());renderWalletCaps(document.getElementById('pvWalletCaps'),aiSingleWallet,'selectSingleWallet');document.getElementById('aiSinglePreview').style.display='block';document.getElementById('aiMultiPreview').style.display='none';document.getElementById('aiConfirmBtn').textContent='确认记录 →'}else{document.getElementById('aiSinglePreview').style.display='none';document.getElementById('aiMultiPreview').innerHTML='<div class="ai-multi-grid">'+records.map((r,i)=>{const iw=r.wallet||getAccounts()[0]?.id||'wx';const acc=getAccount(iw);return`<div class="ai-multi-card" data-idx="${i}"><div class="ai-multi-top"><span class="ai-multi-badge ${r.type}">${r.type==='expense'?'支出':'收入'}</span><span class="ai-multi-amt">${r.amount?fmtCur(acc?.currency||'CNY',r.amount):'—'}</span></div><div class="ai-multi-detail">${r.desc||'—'}${r.borrower?`<br>借给：${r.borrower}`:''}${r.note?`<br><span style="color:var(--ink3)">${r.note}</span>`:''}<br>${r.date?fmtDate(r.date):'今天'}</div><div class="ai-multi-caps">${getAccounts().map(a=>`<span class="wcap${a.id===iw?' active':''}" data-w="${a.id}" onclick="selectMultiWallet(${i},'${a.id}')">${esc(a.abbr)} ${a.name}</span>`).join('')}</div></div>`}).join('')+'</div>';document.getElementById('aiMultiPreview').style.display='block';document.getElementById('aiConfirmBtn').textContent=`全部记录（${records.length} 笔）→`}}
 function aiConfirmAll(){if(!aiParsedResult||!aiParsedResult.length)return;if(aiParsedResult.length===1){const r=aiParsedResult[0];const amt=parseFloat(r.amount);if(!amt||amt<=0){showToast('金额无效','err');return}const wallet=aiSingleWallet;const type=r.type||'expense';let aw=wallet,rd=false;if(type==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(res.msg,'err');return}aw=res.actualWallet;rd=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=(type==='expense'&&r.desc==='资金流转'&&r.borrower);data.records.unshift({id:Date.now(),type,amt,desc:r.desc||'未备注',wallet:aw,date:r.date||localDateStr(),...(r.note?{note:r.note}:{}),...(rd?{redirected:true}:{}),...(isLoan?{loan:true,borrower:r.borrower,loanStatus:'pending'}:{})});debouncedSync();clearAiInput();renderOverview();renderAddPage();showToast(isLoan?`✓ 已记录，待 ${r.borrower} 还款`:'✓ 已记录');return}let ok=0;aiParsedResult.forEach((r,i)=>{const amt=parseFloat(r.amount);if(!amt||amt<=0)return;const wallet=aiMultiWallets[i]||r.wallet||getAccounts()[0]?.id||'wx';const type=r.type||'expense';let aw=wallet,rd=false;if(type==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(`跳过「${r.desc}」：${res.msg}`,'warn');return}aw=res.actualWallet;rd=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=(type==='expense'&&r.desc==='资金流转'&&r.borrower);data.records.unshift({id:Date.now()+ok,type,amt,desc:r.desc||'未备注',wallet:aw,date:r.date||localDateStr(),...(r.note?{note:r.note}:{}),...(rd?{redirected:true}:{}),...(isLoan?{loan:true,borrower:r.borrower,loanStatus:'pending'}:{})});ok++});debouncedSync();clearAiInput();renderOverview();renderAddPage();showToast(`✓ 已记录 ${ok} 笔`)}
 function clearAiInput(){document.getElementById('aiInput').value='';document.getElementById('aiPreview').classList.remove('show');document.getElementById('aiStatus').textContent='';aiParsedResult=null;aiSingleWallet='';aiMultiWallets={}}
+
+/* ===== 问账本：AI 查询 + 本地算账 ===== */
+const ASK_EXAMPLES=['这个月吃饭花了多少？','上个月支出最多的是什么？','今年工资收入一共多少？','这个月各分类花了多少？'];
+function renderAskChips(){const el=document.getElementById('askChips');if(!el)return;el.innerHTML=ASK_EXAMPLES.map(q=>`<button class="ask-chip" onclick="askExample(this)">${esc(q)}</button>`).join('')}
+function askExample(btn){const i=document.getElementById('askInput');if(i){i.value=btn.textContent;aiAsk()}}
+async function aiAsk(){
+  const input=document.getElementById('askInput');const result=document.getElementById('askResult');
+  const q=(input.value||'').trim();if(!q){input.focus();return}
+  const btn=document.getElementById('askBtn');const old=btn.textContent;btn.disabled=true;btn.textContent='…';
+  result.style.display='block';result.innerHTML='<div class="ask-loading">正在理解你的问题…</div>';
+  try{
+    const res=await callLedgerAI('ledger_query',{text:q,today:localDateStr(),accounts:getAccounts().map(a=>({id:a.id,name:a.name,currency:a.currency}))});
+    const query=res.query||{};
+    renderAskResult(query,runLedgerQuery(query));
+  }catch(err){result.innerHTML='<div class="ask-err">❌ '+esc(err.message||'查询失败')+'</div>'}
+  finally{btn.disabled=false;btn.textContent=old}
+}
+function recCurrency(r){return getAccount(r.wallet)?.currency||'CNY'}
+function runLedgerQuery(q){
+  let recs=(data.records||[]).filter(r=>r.type==='expense'||r.type==='income');
+  const wantAll=q.metric==='net'||q.type==='all';
+  if(!wantAll&&q.type==='income')recs=recs.filter(r=>r.type==='income');
+  else if(!wantAll)recs=recs.filter(r=>r.type==='expense');
+  if(q.from)recs=recs.filter(r=>r.date&&r.date>=q.from);
+  if(q.to)recs=recs.filter(r=>r.date&&r.date<=q.to);
+  if(q.category)recs=recs.filter(r=>normalizeCat(r.desc,r.note)===q.category);
+  if(q.wallet)recs=recs.filter(r=>r.wallet===q.wallet);
+  if(q.keyword){const k=q.keyword;recs=recs.filter(r=>(r.note||'').includes(k)||(r.desc||'').includes(k))}
+  return recs.slice().sort((a,b)=>((b.date||'').localeCompare(a.date||''))||(b.id-a.id));
+}
+function sumByCur(recs){const m={};recs.forEach(r=>{const c=recCurrency(r);m[c]=(m[c]||0)+r.amt});return m}
+function fmtCurMap(m){const ks=Object.keys(m);return ks.length?ks.map(c=>fmtCur(c,m[c])).join(' + '):fmtCur('CNY',0)}
+function renderAskResult(q,recs){
+  const result=document.getElementById('askResult');const title=esc(q.title||'查询结果');
+  if(!recs.length){result.innerHTML=`<div class="ask-answer"><div class="ask-q">${title}</div><div class="ask-a">没有找到符合条件的记录。</div></div>`;return}
+  const exp=recs.filter(r=>r.type==='expense'),inc=recs.filter(r=>r.type==='income');
+  const metric=q.metric||'sum';let answer='';
+  if(metric==='net'||q.type==='all'){
+    const e=sumByCur(exp),i=sumByCur(inc);const curs=[...new Set([...Object.keys(e),...Object.keys(i)])];
+    const netStr=curs.map(c=>fmtCur(c,(i[c]||0)-(e[c]||0))).join(' + ')||fmtCur('CNY',0);
+    answer=`收入 ${fmtCurMap(i)}　支出 ${fmtCurMap(e)}　结余 ${netStr}`;
+  }else if(metric==='count'){answer=`共 ${recs.length} 笔`;}
+  else if(metric==='avg'){const m=sumByCur(recs);const avg={};Object.keys(m).forEach(c=>{const n=recs.filter(r=>recCurrency(r)===c).length;avg[c]=n?m[c]/n:0});answer=`平均每笔 ${fmtCurMap(avg)}（共 ${recs.length} 笔）`;}
+  else if(metric==='max'){const top=recs.slice().sort((a,b)=>b.amt-a.amt)[0];answer=`最大一笔 ${fmtCur(recCurrency(top),top.amt)} · ${esc(normalizeCat(top.desc,top.note))} · ${fmtDate(top.date)}`;}
+  else{answer=`共 ${fmtCurMap(sumByCur(recs))}（${recs.length} 笔）`;}
+  const breakdown=q.groupBy?buildAskBreakdown(recs,q.groupBy):'';
+  const listHtml=recs.slice(0,50).map(askRowHTML).join('');
+  const more=recs.length>50?`<div class="ask-more">仅显示前 50 笔，共 ${recs.length} 笔</div>`:'';
+  result.innerHTML=`<div class="ask-answer"><div class="ask-q">${title}</div><div class="ask-a">${answer}</div></div>${breakdown}<div class="ask-list">${listHtml}${more}</div>`;
+}
+function buildAskBreakdown(recs,groupBy){
+  const groups={};
+  recs.forEach(r=>{let k;if(groupBy==='category')k=normalizeCat(r.desc,r.note);else if(groupBy==='wallet')k=getAccount(r.wallet)?.name||'未知';else if(groupBy==='month')k=(r.date||'').slice(0,7);else if(groupBy==='day')k=r.date||'';else k='全部';if(!groups[k])groups[k]={amt:0,cur:recCurrency(r),n:0};groups[k].amt+=r.amt;groups[k].n++});
+  const rows=Object.entries(groups).sort((a,b)=>b[1].amt-a[1].amt);const max=rows[0]?rows[0][1].amt:1;
+  return`<div class="ask-bd">`+rows.map(([k,v])=>`<div class="ask-bd-row"><span class="ask-bd-k">${esc(k||'—')}</span><span class="ask-bd-bar"><span style="width:${Math.max(3,Math.round(v.amt/max*100))}%"></span></span><span class="ask-bd-v">${fmtCur(v.cur,v.amt)}</span></div>`).join('')+`</div>`;
+}
+function askRowHTML(r){
+  const cat=normalizeCat(r.desc,r.note)||'未备注';const m=getCatMeta(cat);const acc=getAccount(r.wallet);
+  const sign=r.type==='income'?'+':'-';const sub=(r.note?esc(r.note)+' · ':'')+(acc?esc(acc.name)+' · ':'')+fmtDate(r.date);
+  return`<div class="ask-row"><div class="cd-ico" style="background:${m.bg};color:${m.color}">${catSvg(cat)}</div><div class="ask-rinfo"><div class="ask-rdesc">${esc(cat)}</div><div class="ask-rsub">${sub}</div></div><div class="ask-ramt ${r.type}">${sign}${fmtCur(acc?acc.currency:'CNY',r.amt)}</div></div>`;
+}
 
 
 /* ===== 周期账单 / 提醒 ===== */

@@ -152,6 +152,63 @@ ${JSON.stringify(summary)}
   };
 }
 
+function buildLedgerQueryRequest(payload, user) {
+  const text = String(payload?.text || '').trim();
+  const today = String(payload?.today || '');
+  const accounts = Array.isArray(payload?.accounts) ? payload.accounts : [];
+
+  if (!text) {
+    throw new Error('缺少问题文本');
+  }
+
+  const accountText = accounts.map(a => `${a.id}=${a.name}`).join('、');
+
+  const prompt = `
+你是记账查询助手。把用户的问题解析成结构化查询条件，只返回 JSON，不要解释、不要算账。
+
+必须返回这个格式：
+{
+  "type": "expense / income / all",
+  "from": "YYYY-MM-DD 或 null",
+  "to": "YYYY-MM-DD 或 null",
+  "category": "分类名 或 null",
+  "wallet": "账户id 或 null",
+  "keyword": "要在备注里匹配的关键词 或 null",
+  "groupBy": "category / wallet / day / month 或 null",
+  "metric": "sum / count / avg / max / net / list",
+  "title": "用一句简短中文复述这次查询"
+}
+
+规则：
+- 今天是 ${today}。相对时间（今天/昨天/本周/这个月/上个月/今年/最近N天）都按今天推算，日期范围包含起止两端。
+- 没说支出还是收入时，type 默认 "expense"。
+- 问"结余/净收支/到底剩多少/收支情况"时，type="all"、metric="net"。
+- 问"最多/最大/花得最多的一笔"用 metric="max"；问"各分类/每个账户分别多少"用对应 groupBy。
+- 问"多少笔/几次"用 metric="count"；"平均每笔"用 metric="avg"；只想看明细列表用 metric="list"。
+- category 只能从这些里选最贴切的一个，否则 null：吃饭、交通、购物、居住、旅游、医疗、学习工作、资金流转、其他。
+- 用户提到具体账户（如"支付宝/微信/某银行"）时映射到对应 id，否则 null。可用账户：${accountText}
+- 拿不准的字段一律填 null。只返回 JSON。
+
+用户问题：
+${text}
+`.trim();
+
+  return {
+    model: ALLOWED_MODEL,
+    thinking: { type: 'disabled' },
+    temperature: 0,
+    max_tokens: 260,
+    response_format: { type: 'json_object' },
+    user_id: user.id,
+    messages: [
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+  };
+}
+
 export default {
   async fetch(request) {
     try {
@@ -181,6 +238,8 @@ export default {
         deepseekBody = buildLedgerParseRequest(payload, user);
       } else if (task === 'finance_summary') {
         deepseekBody = buildFinanceSummaryRequest(payload, user);
+      } else if (task === 'ledger_query') {
+        deepseekBody = buildLedgerQueryRequest(payload, user);
       } else {
         return json({ error: '未知 AI 任务' }, 400);
       }
@@ -218,6 +277,22 @@ export default {
 
         return json({
           records: Array.isArray(parsed.records) ? parsed.records : [],
+          usage: result.usage || null,
+          model: result.model || ALLOWED_MODEL,
+        });
+      }
+
+      if (task === 'ledger_query') {
+        let parsed;
+
+        try {
+          parsed = JSON.parse(content);
+        } catch {
+          return json({ error: 'AI 返回内容不是有效 JSON' }, 502);
+        }
+
+        return json({
+          query: parsed && typeof parsed === 'object' ? parsed : {},
           usage: result.usage || null,
           model: result.model || ALLOWED_MODEL,
         });

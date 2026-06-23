@@ -2,7 +2,7 @@
    - HTML 走 network-first：Vercel 一更新，app 立刻是新版（联网时不会卡旧版）
    - 静态库/图标走 cache-first：启动更快、可离线加载界面外壳
    - 跨域请求（Supabase 同步 / AI 接口）完全不拦截 */
-const CACHE = 'ledger-shell-v2';
+const CACHE = 'ledger-shell-v4';
 const ASSETS = [
   './index.html',
   './supabase.min.js',
