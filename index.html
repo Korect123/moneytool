@@ -193,8 +193,8 @@ html,body{height:100%;background:var(--paper);font-family:var(--font);color:var(
 
 
 .ai-main-title{background:linear-gradient(135deg,#fff 0%,#faf6ea 100%);border:1.5px solid rgba(160,130,50,.16);border-radius:var(--r) var(--r) 0 0;padding:16px 20px 12px;margin-bottom:0}
-.ai-main-head{font-size:16px;font-weight:700;color:var(--gold-t);letter-spacing:-.2px}
-.ai-main-sub{font-size:12px;color:var(--ink3);margin-top:3px}
+.ai-main-head{font-size:16px;font-weight:700;color:var(--gold-t);letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+.ai-main-sub{font-size:12px;color:var(--ink3);margin-top:4px}
 .ai-main-box{border-radius:0 0 var(--r) var(--r)!important;border-top:none!important;margin-bottom:16px}
 .ov-cat-budget{font-size:10px;color:var(--ink3);margin-top:3px}.ov-cat-budget.over{color:var(--red-t);font-weight:600}
 .insight-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px 18px;margin-bottom:12px;box-shadow:var(--sh)}
@@ -301,9 +301,7 @@ select option{background:#fff;color:var(--ink)}
 .move-note{font-size:12px;color:var(--blue-t);padding:9px 12px;background:var(--blue-bg);border-radius:var(--r-sm);margin-bottom:14px;border:1px solid rgba(59,109,212,.12)}
 
 .ai-full-box{background:linear-gradient(135deg,rgba(160,130,50,.03) 0%,#fff 100%);border:1.5px solid var(--border);border-radius:0 0 var(--r) var(--r);padding:18px 20px;margin-bottom:16px;border-top:none}
-.ai-full-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
 .ai-badge{font-size:10px;font-weight:600;background:var(--gold);color:#fff;padding:2px 8px;border-radius:var(--r-sm)}
-.ai-box-hint{font-size:12px;color:var(--ink3)}
 .ai-textarea{width:100%;border:1px solid var(--border2);border-radius:var(--r-sm);font-size:14px;background:var(--paper);color:var(--ink);font-family:var(--font);padding:10px 12px;resize:none;outline:none;line-height:1.6;transition:border-color .2s,box-shadow .2s,background .15s}
 .ai-textarea:focus{border-color:var(--gold);background:#fff;box-shadow:0 0 0 3px var(--gold-a10)}
 .ai-textarea::placeholder{color:var(--ink3)}
@@ -854,13 +852,12 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
 
       <div id="sec-add" class="section">
         <div class="ai-main-title">
-          <div class="ai-main-head">✦ 智能记账</div>
-          <div class="ai-main-sub">直接输入一句话，例如：今天房租 1500，午饭 35，收到工资 5000</div>
+          <div class="ai-main-head">✦ 智能记账 <span class="ai-badge">AI</span></div>
+          <div class="ai-main-sub">用一句话描述，自动识别多条收支</div>
         </div>
         <button class="ai-toggle-btn open" id="aiToggleBtn" onclick="toggleAiPanel()" style="display:none"><span style="font-size:12px">✦</span> AI 智能识别 <span class="ai-toggle-arrow">▾</span></button>
         <div class="ai-full-box ai-main-box" id="aiBox" style="display:block">
-          <div class="ai-full-head"><span class="ai-badge">AI</span><span class="ai-box-hint">用一句话描述，自动识别多条记录</span></div>
-          <textarea class="ai-textarea" id="aiInput" rows="2" placeholder="例：今天收到工资5000，然后借给小张2000，晚饭吃了150块"></textarea>
+          <textarea class="ai-textarea" id="aiInput" rows="2" placeholder="例：今天房租1500，午饭35，收到工资5000，借给小张2000"></textarea>
           <div class="ai-actions"><button class="ai-btn" id="aiParseBtn" onclick="aiParse()">✦ 智能识别</button><span class="ai-status" id="aiStatus"></span></div>
           <div class="ai-preview" id="aiPreview">
             <div id="aiSinglePreview">
