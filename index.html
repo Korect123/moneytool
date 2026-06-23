@@ -334,12 +334,8 @@ select option{background:#fff;color:var(--ink)}
 .ask-card{background:linear-gradient(135deg,#fff 0%,#faf6ea 100%);border:1.5px solid rgba(160,130,50,.16);border-radius:var(--r);padding:15px 18px;margin-bottom:16px}
 .ask-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .ask-title{font-size:15px;font-weight:700;color:var(--gold-t)}
-.ask-sub{font-size:11px;color:var(--ink3)}
 .ask-input-row{display:flex;gap:8px;align-items:stretch}
 .ask-input-row input{flex:1}
-.ask-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
-.ask-chip{font-size:12px;color:var(--ink2);background:var(--paper);border:1px solid var(--border2);border-radius:var(--r-sm);padding:5px 10px;cursor:pointer;font-family:var(--font);transition:all .15s}
-.ask-chip:hover{border-color:var(--gold);color:var(--gold-t);background:var(--gold-bg)}
 .ask-result{margin-top:14px;border-top:1px solid rgba(160,130,50,.12);padding-top:13px}
 .ask-loading{font-size:13px;color:var(--amber-t)}
 .ask-err{font-size:13px;color:var(--red-t)}
@@ -833,9 +829,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
           </div>
         </div>
         <div class="ask-card" id="askCard">
-          <div class="ask-head"><span class="ask-title">✦ 问账本</span><span class="ask-sub">用大白话问，自动从记录里调数据</span></div>
-          <div class="ask-input-row"><input type="text" id="askInput" placeholder="例：6月18到21号花了多少？" onkeydown="if(event.key==='Enter')aiAsk()"><button class="ai-btn" id="askBtn" onclick="aiAsk()">问</button></div>
-          <div class="ask-chips" id="askChips"></div>
+          <div class="ask-head"><span class="ask-title">✦ 问账本</span></div>
+          <div class="ask-input-row"><input type="text" id="askInput" placeholder="用大白话问，自动从记录里调数据" onkeydown="if(event.key==='Enter')aiAsk()"><button class="ai-btn" id="askBtn" onclick="aiAsk()">问</button></div>
           <div class="ask-result" id="askResult" style="display:none"></div>
         </div>
         <div class="loan-alert" id="recurringAlert" style="display:none">
@@ -2051,7 +2046,6 @@ function renderTrendChart(mo){
 }
 
 function renderOverview(){
-  renderAskChips();
   // 总资产按币种分组（投资账户不计入——钱锁在投资里不能随时取用，单独显示）
   const byCurrency={},investByCur={};
   getAccounts().forEach(a=>{const c=a.currency;const bal=data.balances[a.id]||0;if(a.type==='invest'){investByCur[c]=(investByCur[c]||0)+bal}else{byCurrency[c]=(byCurrency[c]||0)+bal}});
@@ -2249,9 +2243,6 @@ function aiConfirmAll(){if(!aiParsedResult||!aiParsedResult.length)return;if(aiP
 function clearAiInput(){document.getElementById('aiInput').value='';document.getElementById('aiPreview').classList.remove('show');document.getElementById('aiStatus').textContent='';aiParsedResult=null;aiSingleWallet='';aiMultiWallets={}}
 
 /* ===== 问账本：AI 查询 + 本地算账 ===== */
-const ASK_EXAMPLES=['这个月吃饭花了多少？','上个月支出最多的是什么？','今年工资收入一共多少？','这个月各分类花了多少？'];
-function renderAskChips(){const el=document.getElementById('askChips');if(!el)return;el.innerHTML=ASK_EXAMPLES.map(q=>`<button class="ask-chip" onclick="askExample(this)">${esc(q)}</button>`).join('')}
-function askExample(btn){const i=document.getElementById('askInput');if(i){i.value=btn.textContent;aiAsk()}}
 async function aiAsk(){
   const input=document.getElementById('askInput');const result=document.getElementById('askResult');
   const q=(input.value||'').trim();if(!q){input.focus();return}
