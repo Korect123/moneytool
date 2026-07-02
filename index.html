@@ -1277,7 +1277,33 @@ async function callLedgerAI(task, payload) {
 
   return result;
 }
-  
+
+/* ===== 数字滚动 ===== */
+const lastShownNums=new Map();
+function prefersReducedMotion(){return window.matchMedia('(prefers-reduced-motion: reduce)').matches}
+function animateNumber(el,from,to,opts={}){
+  if(!el)return;
+  const format=opts.format||fmt;
+  if(el._numRaf){cancelAnimationFrame(el._numRaf);el._numRaf=null}
+  if(prefersReducedMotion()||!isFinite(from)||!isFinite(to)||from===to){el.textContent=format(to);return}
+  const dur=opts.duration||600,start=performance.now();
+  const easeOut=t=>1-Math.pow(1-t,3);
+  const frame=now=>{
+    const p=Math.min(1,(now-start)/dur);
+    el.textContent=format(p<1?from+(to-from)*easeOut(p):to);
+    el._numRaf=p<1?requestAnimationFrame(frame):null;
+  };
+  el._numRaf=requestAnimationFrame(frame);
+}
+/* 渲染层每次整块重建 DOM，旧值取不到，记在 JS 侧；仅当数值变化时滚动，首次显示直接写终值 */
+function setAnimatedNum(el,slot,val,format=fmt){
+  if(!el)return;
+  const prev=lastShownNums.get(slot);
+  lastShownNums.set(slot,val);
+  if(prev===undefined||prev===val){el.textContent=format(val);return}
+  animateNumber(el,prev,val,{format});
+}
+
 /* ===== 账户图标 HTML ===== */
 function accIconHtml(acc,sm){
   const sz=sm?'sm':'lg';
@@ -1464,7 +1490,7 @@ function migrateData(){
 let authMode='login';
 function switchAuthTab(mode){authMode=mode;document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',['login','register'][i]===mode));document.getElementById('authBtn').textContent=mode==='login'?'登录':'注册';document.getElementById('authMsg').innerHTML=''}
 async function doAuth(){const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;const btn=document.getElementById('authBtn'),msg=document.getElementById('authMsg');if(!email||!password){msg.className='auth-err';msg.textContent='请填写邮箱和密码';return}if(!sb){showToast('初始化中，请稍候');return}btn.disabled=true;btn.textContent='请稍候…';msg.innerHTML='';try{const res=authMode==='login'?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});if(res.error)throw res.error;if(authMode==='register'&&!res.data.session){msg.className='auth-ok';msg.textContent='注册成功！请查收验证邮件后登录。';btn.disabled=false;btn.textContent='注册'}}catch(e){msg.className='auth-err';msg.textContent=e.message==='Invalid login credentials'?'邮箱或密码错误':e.message;btn.disabled=false;btn.textContent=authMode==='login'?'登录':'注册'}}
-async function doLogout(){await sb.auth.signOut();currentUser=null;data={accounts:[],balances:{},records:[],budget:0,recurringBills:[],categoryBudgets:{}};document.getElementById('appWrap').classList.remove('visible');document.getElementById('authWrap').style.display='flex';document.getElementById('authEmail').value='';document.getElementById('authPassword').value='';switchAuthTab('login')}
+async function doLogout(){await sb.auth.signOut();currentUser=null;lastShownNums.clear();data={accounts:[],balances:{},records:[],budget:0,recurringBills:[],categoryBudgets:{}};document.getElementById('appWrap').classList.remove('visible');document.getElementById('authWrap').style.display='flex';document.getElementById('authEmail').value='';document.getElementById('authPassword').value='';switchAuthTab('login')}
 async function enterApp(user){currentUser=user;document.getElementById('authWrap').style.display='none';document.getElementById('appWrap').classList.add('visible');document.getElementById('userEmail').textContent=user.email;setTimeout(()=>{const el=document.getElementById('settingsEmail');if(el)el.textContent=user.email},100);document.getElementById('txDate').value=localDateStr();document.getElementById('moveTxDate').value=localDateStr();activeMonth=localYM();activeYear=new Date().getFullYear();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];document.getElementById('monthBadge').textContent=months[new Date().getMonth()]+'月';selectedCat='';await loadFromCloud();refreshAllUI();renderOverview();renderAddPage();renderRecurringDue();const aiBox=document.getElementById('aiBox');if(aiBox)aiBox.style.display='block'}
 function initSupabase(){if(typeof supabase!=='undefined'){sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);sb.auth.onAuthStateChange((event,session)=>{if(session?.user)enterApp(session.user);else{document.getElementById('appWrap').classList.remove('visible');document.getElementById('authWrap').style.display='flex'}})}else{if(!initSupabase._c)initSupabase._c=0;initSupabase._c++;if(initSupabase._c<30)setTimeout(initSupabase,500);else console.warn('Supabase CDN 加载超时')}}
 window.addEventListener('load',initSupabase);
@@ -1586,6 +1612,7 @@ function renderCardDetail(){
   const acc=getAccount(cardWallet);if(!acc)return;
   const bal=data.balances[cardWallet]||0;
   document.getElementById('cdHead').innerHTML=`<span class="w-icon lg" style="background:${acc.color};color:#fff">${esc(acc.abbr)}</span><div><div style="font-size:15px;font-weight:600;color:var(--ink)">${esc(acc.name)}</div><div style="font-size:11px;color:var(--ink3)">${acc.currency}</div></div><div class="cd-bal"><div class="cd-bal-label">当前余额</div><div class="cd-bal-val">${fmtCur(acc.currency,bal)}</div></div>`;
+  setAnimatedNum(document.querySelector('#cdHead .cd-bal-val'),'cardbal-'+cardWallet,bal,x=>fmtCur(acc.currency,x));
   // 计算每笔交易"扣款/入账后"的余额：以当前余额为基准，按时间倒序逐笔回退
   const balAfter=walletBalanceAfterMap(cardWallet,bal);
   const recs=cardWalletRecords(cardYM).slice().sort((a,b)=>((b.date||'').localeCompare(a.date||''))||(b.id-a.id));
@@ -2050,10 +2077,11 @@ function renderOverview(){
   const assetEl=document.getElementById('heroAssetVals');
   if(assetEl){
     const entries=Object.entries(byCurrency).filter(([,v])=>v!==0);
-    if(entries.length===0){assetEl.innerHTML=`<div class="hero-asset-val">¥ 0.00</div>`}
-    else{assetEl.innerHTML=entries.map(([c,v],i)=>`<div class="hero-asset-val" style="${i>0?'font-size:20px;margin-top:4px':''}">${fmtCur(c,v)}</div>`).join('')}
+    const rows=entries.length?entries:[['CNY',0]];
     const investEntries=Object.entries(investByCur).filter(([,v])=>v!==0);
-    if(investEntries.length){assetEl.innerHTML+=`<div class="hero-asset-sub">投资 ${investEntries.map(([c,v])=>fmtCur(c,v)).join(' + ')}（不计入总资产）</div>`}
+    assetEl.innerHTML=rows.map(([c,v],i)=>`<div class="hero-asset-val" data-cur="${c}" style="${i>0?'font-size:20px;margin-top:4px':''}">${fmtCur(c,v)}</div>`).join('')
+      +(investEntries.length?`<div class="hero-asset-sub">投资 ${investEntries.map(([c,v])=>fmtCur(c,v)).join(' + ')}（不计入总资产）</div>`:'');
+    rows.forEach(([c,v])=>setAnimatedNum(assetEl.querySelector(`.hero-asset-val[data-cur="${c}"]`),'asset-'+c,v,x=>fmtCur(c,x)));
   }
   // 侧栏余额
   renderSidebarBalances();
@@ -2062,13 +2090,13 @@ function renderOverview(){
   const inc=mo.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);
   const exp=mo.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);
   const net=inc-exp;
-  document.getElementById('monthIncome').textContent=fmt(inc);
+  setAnimatedNum(document.getElementById('monthIncome'),'month-inc',inc);
   document.getElementById('monthIncomeSub').textContent=mo.filter(r=>r.type==='income').length+'笔';
-  document.getElementById('monthExpense').textContent=fmt(exp);
+  setAnimatedNum(document.getElementById('monthExpense'),'month-exp',exp);
   document.getElementById('monthExpenseSub').textContent=mo.filter(r=>r.type==='expense').length+'笔';
-  document.getElementById('monthCount').textContent=mo.length;
+  setAnimatedNum(document.getElementById('monthCount'),'month-cnt',mo.length,v=>String(Math.round(v)));
   const netEl=document.getElementById('heroNetVals');
-  if(netEl){const cls=net>0?'pos':net<0?'neg':'zero';const arrow=net>0?'↗ ':net<0?'↘ ':'';netEl.innerHTML=`<div class="hero-net-val ${cls}"><span>${arrow}</span><span>${(net>0?'+':'')+fmt(net)}</span></div><div class="hero-net-sub">CNY</div>`}
+  if(netEl){const cls=net>0?'pos':net<0?'neg':'zero';const arrow=net>0?'↗ ':net<0?'↘ ':'';netEl.innerHTML=`<div class="hero-net-val ${cls}"><span>${arrow}</span><span data-net>${(net>0?'+':'')+fmt(net)}</span></div><div class="hero-net-sub">CNY</div>`;setAnimatedNum(netEl.querySelector('[data-net]'),'month-net',net,v=>(v>0?'+':'')+fmt(v))}
   // 预算
   const budgetEl=document.getElementById('heroBudget');
   if(data.budget>0){budgetEl.style.display='block';const pct=Math.min(exp/data.budget*100,100);const over=exp>data.budget;document.getElementById('budgetText').textContent=`${fmt(exp)} / ${fmt(data.budget)}`;const fill=document.getElementById('budgetFill');fill.style.width=pct+'%';fill.className='hero-budget-fill'+(over?' over':'');
@@ -2083,7 +2111,7 @@ function renderOverview(){
   renderTrendChart(mo);
   // 钱包卡片
   const walletsEl=document.getElementById('ovWallets');
-  if(walletsEl){walletsEl.innerHTML=getAccounts().map(a=>{const bal=data.balances[a.id]||0;return`<div class="ov-wallet-card" onclick="openCardDetail('${a.id}')" style="cursor:pointer;background:linear-gradient(135deg,${hexToRgba(a.color,.06)} 0%,${hexToRgba(a.color,.02)} 100%);border-color:${hexToRgba(a.color,.15)}"><div class="ov-w-glow" style="background:radial-gradient(circle,${a.color} 0%,transparent 70%)"></div><div class="ov-w-icon" style="background:${hexToRgba(a.color,.15)}"><span class="w-icon lg" style="background:${a.color};color:#fff">${esc(a.abbr)}</span></div><div class="ov-w-info"><div class="ov-w-name">${esc(a.name)} <span style="font-size:9px;color:var(--ink3)">${a.currency}</span></div><div class="ov-w-bal">${fmtCur(a.currency,bal)}</div></div></div>`}).join('')}
+  if(walletsEl){walletsEl.innerHTML=getAccounts().map(a=>{const bal=data.balances[a.id]||0;return`<div class="ov-wallet-card" onclick="openCardDetail('${a.id}')" style="cursor:pointer;background:linear-gradient(135deg,${hexToRgba(a.color,.06)} 0%,${hexToRgba(a.color,.02)} 100%);border-color:${hexToRgba(a.color,.15)}"><div class="ov-w-glow" style="background:radial-gradient(circle,${a.color} 0%,transparent 70%)"></div><div class="ov-w-icon" style="background:${hexToRgba(a.color,.15)}"><span class="w-icon lg" style="background:${a.color};color:#fff">${esc(a.abbr)}</span></div><div class="ov-w-info"><div class="ov-w-name">${esc(a.name)} <span style="font-size:9px;color:var(--ink3)">${a.currency}</span></div><div class="ov-w-bal" data-wbal="${a.id}">${fmtCur(a.currency,bal)}</div></div></div>`}).join('');getAccounts().forEach(a=>setAnimatedNum(walletsEl.querySelector(`.ov-w-bal[data-wbal="${a.id}"]`),'wallet-'+a.id,data.balances[a.id]||0,x=>fmtCur(a.currency,x)))}
   // Cat rank
   const cats=CATS.expense;const catAmts=cats.map(cat=>({cat,amt:mo.filter(r=>r.type==='expense'&&r.desc===cat).reduce((s,r)=>s+r.amt,0)})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
   const maxAmt=catAmts[0]?.amt||1;const totalExp=catAmts.reduce((s,x)=>s+x.amt,0)||1;
@@ -2094,7 +2122,7 @@ function renderOverview(){
 }
 
 /* ===== 记一笔右侧统计 ===== */
-function renderAddPage(){const ym=localYM();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];const mo=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');const inc=mo.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);const exp=mo.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);document.getElementById('addMonthInc').textContent=fmt(inc);document.getElementById('addMonthExp').textContent=fmt(exp);document.getElementById('addMonthCnt').textContent=mo.length;document.getElementById('addPageMonth').textContent=months[new Date().getMonth()]+'月'}
+function renderAddPage(){const ym=localYM();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];const mo=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');const inc=mo.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);const exp=mo.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);setAnimatedNum(document.getElementById('addMonthInc'),'add-month-inc',inc);setAnimatedNum(document.getElementById('addMonthExp'),'add-month-exp',exp);setAnimatedNum(document.getElementById('addMonthCnt'),'add-month-cnt',mo.length,v=>String(Math.round(v)));document.getElementById('addPageMonth').textContent=months[new Date().getMonth()]+'月'}
 
 /* ===== 账单明细 ===== */
 function renderMonthTabs(){
