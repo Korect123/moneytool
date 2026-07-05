@@ -754,6 +754,33 @@ select option{background:#fff;color:var(--ink)}
 /* ===== 键盘导航焦点环（仅键盘触发，不影响鼠标） ===== */
 button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
+/* ===== 存钱目标卡 ===== */
+.goal-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:15px 20px;margin-top:12px;box-shadow:var(--sh)}
+.goal-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:9px}
+.goal-name{font-size:12px;font-weight:600;color:var(--gold-t)}
+.goal-vals{font-size:12px;color:var(--ink3)}.goal-vals b{color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums}
+.goal-bar{height:6px;background:var(--gold-a08);border-radius:3px;overflow:hidden}
+.goal-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--gold-bright),var(--gold));transition:width .6s cubic-bezier(.4,0,.2,1)}
+.goal-foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px;color:var(--ink3)}
+.goal-save-btn{padding:4px 13px;border:1px solid var(--border2);background:var(--gold-bg);color:var(--gold-t);border-radius:999px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font);transition:all .15s}
+.goal-save-btn:hover{border-color:var(--gold);background:var(--gold-bright-bg)}
+
+/* ===== 月度回顾 ===== */
+.review-step{opacity:0;transform:translateY(10px);animation:reviewStep .5s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes reviewStep{to{opacity:1;transform:none}}
+.rv-nums{display:flex;gap:8px;margin-bottom:6px}
+.rv-num{flex:1;text-align:center;background:var(--paper);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px 6px}
+.rv-num-val{font-size:17px;font-weight:700;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.rv-num-val.income{color:var(--gold-t)}.rv-num-val.expense{color:var(--red-t)}.rv-num-val.neutral{color:var(--ink)}
+.rv-num-lab{font-size:10px;color:var(--ink3);margin-top:3px}
+.rv-line{font-size:12px;color:var(--ink2);background:var(--gold-bg);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;margin-top:8px;line-height:1.7}
+.rv-sec-title{font-size:11px;color:var(--ink3);font-weight:600;margin:14px 0 8px}
+.rv-link{display:block;width:100%;text-align:center;margin-top:14px;font-size:12px;color:var(--gold-t);background:none;border:none;cursor:pointer;font-family:var(--font);font-weight:600;padding:8px}
+.rv-link:hover{text-decoration:underline}
+
+/* ===== 撒花画布 ===== */
+#confettiCanvas{position:fixed;inset:0;pointer-events:none;z-index:9998}
+
 /* ===== 微交互：主按钮回弹 / toast 对勾 / 新记录入场 ===== */
 .cta,.ai-btn,.modal-save-btn,.submit-all-btn,.ai-confirm-btn{transition:transform .3s cubic-bezier(.34,1.56,.64,1),opacity .15s ease,box-shadow .15s ease}
 .cta:active,.ai-btn:active,.modal-save-btn:active,.submit-all-btn:active,.ai-confirm-btn:active{transform:scale(.96);transition-duration:.08s,.15s,.15s}
@@ -835,6 +862,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
             <div class="hero-budget-daily" id="budgetDaily"></div>
           </div>
         </div>
+        <div id="goalCard"></div>
         <div class="ask-card" id="askCard">
           <div class="ask-head"><span class="ask-title">✦ 问账本</span></div>
           <div class="ask-input-row"><input type="text" id="askInput" placeholder="用大白话问，自动从记录里调数据" onkeydown="if(event.key==='Enter')aiAsk()"><button class="ai-btn" id="askBtn" onclick="aiAsk()">问</button></div>
@@ -951,7 +979,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
 
       <div id="sec-charts" class="section">
         <div class="insight-card">
-          <div class="insight-head"><span>本月财务结论</span><button class="sc-inline-btn neutral" onclick="aiFinanceInsight()">AI 深度总结</button></div>
+          <div class="insight-head"><span>本月财务结论</span><div style="display:flex;gap:6px"><button class="sc-inline-btn neutral" onclick="openMonthlyReview()">✦ 月度回顾</button><button class="sc-inline-btn neutral" onclick="aiFinanceInsight()">AI 深度总结</button></div></div>
           <div id="financeInsights" class="insight-list"></div>
           <div id="aiFinanceInsightText" class="insight-ai"></div>
         </div>
@@ -976,6 +1004,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
             <div class="sc-section-label">月度预算（CNY）</div>
             <div class="sc-row-inline"><span class="sc-inline-label">总预算</span><input class="sc-inline-input" type="number" id="set-budget" placeholder="0" min="0" step="100"><button class="sc-inline-btn primary" onclick="saveBudget()">保存</button><span class="sc-inline-hint">0 = 不限制</span></div>
             <div class="sc-row-inline"><span class="sc-inline-label">分类预算</span><span class="sc-inline-sub">不设置即没有预算</span><button class="sc-inline-btn neutral" onclick="openCategoryBudgetModal()">设置</button></div>
+            <div class="sc-divider"></div>
+            <div class="sc-section-label">存钱目标</div>
+            <div id="goalManage"></div>
             <div class="sc-divider"></div>
             <div class="sc-section-label">周期账单 / 提醒</div>
             <div id="recurringList"></div>
@@ -1158,6 +1189,28 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
     <div class="modal-body">
       <div id="categoryBudgetList"></div>
       <button class="modal-save-btn" onclick="saveCategoryBudgets()">保存分类预算</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="goalModal" style="display:none" onclick="closeGoalModal(event)">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-head"><div><div class="modal-title">存钱目标</div><div class="modal-sub">绑定一个账户，挪钱进去就是存入，进度即余额</div></div><button class="modal-close" onclick="closeGoalModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="edit-field"><label class="edit-label">目标名称</label><input type="text" id="goalName" placeholder="如：紧急救助基金"></div>
+      <div class="edit-field"><label class="edit-label">绑定账户</label><select id="goalAccount"></select></div>
+      <div class="edit-field"><label class="edit-label">里程碑金额（0 或不填 = 先不设，达成时庆祝）</label><input type="number" id="goalTarget" min="0" step="100" placeholder="如：20000"></div>
+      <button class="modal-save-btn" onclick="saveGoal()">保存目标</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reviewModal" style="display:none" onclick="closeReviewModal(event)">
+  <div class="modal">
+    <div class="modal-head"><div><div class="modal-title">月度账单回顾</div><div class="modal-sub">慢下来，看看这个月的钱都去哪了</div></div><button class="modal-close" onclick="closeReviewModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="cd-month"><button class="cd-month-btn" onclick="changeReviewMonth(-1)">‹</button><div class="cd-month-label" id="reviewMonthLabel"></div><button class="cd-month-btn" id="reviewNextBtn" onclick="changeReviewMonth(1)">›</button></div>
+      <div id="reviewBody"></div>
     </div>
   </div>
 </div>
@@ -1477,6 +1530,7 @@ function migrateData(){
   if(data.budget===undefined)data.budget=0;
   if(!data.recurringBills)data.recurringBills=[];
   if(!data.categoryBudgets)data.categoryBudgets={};
+  if(data.savingsGoal===undefined)data.savingsGoal=null;
   if(!data.balances)data.balances={};
   data.accounts.forEach(a=>{if(data.balances[a.id]===undefined)data.balances[a.id]=0});
   data.records.forEach(r=>{if(r.wallet==='bank')r.wallet='icbc';if(r.fromWallet==='bank')r.fromWallet='icbc';if(r.toWallet==='bank')r.toWallet='icbc'});
@@ -1517,7 +1571,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 /* ===== 导航 ===== */
 const PAGE_INFO={overview:{title:'总览',sub:'本月财务状况'},add:{title:'记一笔',sub:'新增收支记录'},records:{title:'账单明细',sub:'查看所有记录'},charts:{title:'统计',sub:'收支趋势分析'},settings:{title:'设置',sub:'账户与数据管理'}};
-function switchTab(t){['overview','add','records','charts','settings'].forEach(id=>{document.getElementById('sec-'+id).classList.toggle('active',id===t);const n=document.getElementById('nav-'+id),m=document.getElementById('mn-'+id);if(n)n.classList.toggle('active',id===t);if(m)m.classList.toggle('active',id===t)});document.getElementById('pageTitle').textContent=PAGE_INFO[t].title;document.getElementById('pageSub').textContent=PAGE_INFO[t].sub;if(t==='overview'){renderOverview();renderRecurringDue()}if(t==='add'){refreshAllUI();renderCatGrid()}if(t==='records')renderRecords();if(t==='charts')renderCharts();if(t==='settings'){document.getElementById('set-budget').value=(data.budget||0).toFixed(0);const el=document.getElementById('settingsEmail');if(el&&currentUser)el.textContent=currentUser.email;refreshAllUI();renderRecurringManageList();renderCategoryBudgetList()}}
+function switchTab(t){['overview','add','records','charts','settings'].forEach(id=>{document.getElementById('sec-'+id).classList.toggle('active',id===t);const n=document.getElementById('nav-'+id),m=document.getElementById('mn-'+id);if(n)n.classList.toggle('active',id===t);if(m)m.classList.toggle('active',id===t)});document.getElementById('pageTitle').textContent=PAGE_INFO[t].title;document.getElementById('pageSub').textContent=PAGE_INFO[t].sub;if(t==='overview'){renderOverview();renderRecurringDue()}if(t==='add'){refreshAllUI();renderCatGrid()}if(t==='records')renderRecords();if(t==='charts')renderCharts();if(t==='settings'){document.getElementById('set-budget').value=(data.budget||0).toFixed(0);const el=document.getElementById('settingsEmail');if(el&&currentUser)el.textContent=currentUser.email;refreshAllUI();renderRecurringManageList();renderCategoryBudgetList();renderGoalManage()}}
 
 /* ===== AI 折叠 ===== */
 function toggleAiPanel(){const btn=document.getElementById('aiToggleBtn'),box=document.getElementById('aiBox');const isOpen=box.style.display!=='none';box.style.display=isOpen?'none':'block';btn.classList.toggle('open',!isOpen)}
@@ -2135,6 +2189,8 @@ function renderOverview(){
   const recent=data.records.slice(0,4);
   document.getElementById('recentList').innerHTML=recent.length?recent.map(r=>recordHTML(r)).join(''):'<div class="empty">还没有记录，去记一笔吧</div>';
   document.getElementById('recentCount').textContent=data.records.length?`共 ${data.records.length} 条`:'';
+  renderGoalCard();
+  checkGoalMilestone();
 }
 
 /* ===== 记一笔右侧统计 ===== */
@@ -2550,6 +2606,120 @@ function saveCategoryBudgets(){
   debouncedSync();closeCategoryBudgetModal();renderOverview();renderFinanceInsights();showToast('✓ 分类预算已保存');
 }
 function renderCategoryBudgetList(){}
+
+/* ===== 存钱目标 ===== */
+function renderGoalCard(){
+  const el=document.getElementById('goalCard');if(!el)return;
+  const g=data.savingsGoal,acc=g&&getAccount(g.accountId);
+  if(!g||!acc){el.innerHTML='';return}
+  const bal=data.balances[g.accountId]||0;
+  const hasT=g.target>0,pct=hasT?Math.min(bal/g.target*100,100):0;
+  el.innerHTML=`<div class="goal-card"><div class="goal-head"><span class="goal-name">🎯 ${esc(g.name)}</span><span class="goal-vals"><b data-goalbal></b>${hasT?' / '+fmtCur(acc.currency,g.target):''}</span></div>${hasT?`<div class="goal-bar"><div class="goal-fill" style="width:${pct}%"></div></div>`:''}<div class="goal-foot"><span>${hasT?(pct>=100?'里程碑已达成 ✓':'已完成 '+Math.round(pct)+'%'):'细水长流，慢慢积累'}</span><button class="goal-save-btn" onclick="startGoalDeposit()">＋ 存入</button></div></div>`;
+  setAnimatedNum(el.querySelector('[data-goalbal]'),'goal-bal',bal,x=>fmtCur(acc.currency,x));
+}
+function renderGoalManage(){
+  const el=document.getElementById('goalManage');if(!el)return;
+  const g=data.savingsGoal;
+  if(!g){el.innerHTML='<div class="sc-row-inline"><button class="sc-inline-btn primary" onclick="openGoalModal()">＋ 设置存钱目标</button><span class="sc-inline-hint">绑定账户，挪钱即存入</span></div>';return}
+  const acc=getAccount(g.accountId);
+  el.innerHTML=`<div class="acc-manage-row"><div class="acc-manage-info">${acc?accIconSm(acc):''}<span class="acc-manage-name">${esc(g.name)}</span><span class="acc-manage-cur">${g.target>0?'里程碑 '+fmtCur(acc?.currency||'CNY',g.target):'未设里程碑'}</span></div><div class="acc-manage-btns"><button class="acc-manage-btn" onclick="openGoalModal()">编辑</button><button class="acc-manage-btn del" onclick="deleteGoal()">删除</button></div></div>`;
+}
+function openGoalModal(){
+  const g=data.savingsGoal;
+  document.getElementById('goalName').value=g?.name||'紧急救助基金';
+  document.getElementById('goalTarget').value=g?.target||'';
+  fillSelect(document.getElementById('goalAccount'),g?.accountId);
+  document.getElementById('goalModal').style.display='flex';
+}
+function closeGoalModal(e){if(!e||e.target===document.getElementById('goalModal'))document.getElementById('goalModal').style.display='none'}
+function saveGoal(){
+  const name=(document.getElementById('goalName').value||'').trim()||'存钱目标';
+  const accountId=document.getElementById('goalAccount').value;
+  const target=parseFloat(document.getElementById('goalTarget').value)||0;
+  if(!accountId){showToast('请选择绑定账户','err');return}
+  const old=data.savingsGoal;
+  /* 换账户或改里程碑后允许重新庆祝 */
+  const celebrated=old&&old.accountId===accountId&&old.target===target?!!old.celebrated:false;
+  data.savingsGoal={name,accountId,target,celebrated,createdAt:old?.createdAt||localDateStr()};
+  debouncedSync();closeGoalModal();renderGoalManage();renderGoalCard();showToast('✓ 存钱目标已保存');checkGoalMilestone();
+}
+function deleteGoal(){
+  const old=data.savingsGoal;if(!old)return;
+  data.savingsGoal=null;
+  debouncedSync();renderGoalManage();renderGoalCard();
+  showUndoToast('已删除存钱目标',()=>{data.savingsGoal=old;debouncedSync();renderGoalManage();renderGoalCard();showToast('已恢复')});
+}
+function startGoalDeposit(){
+  const g=data.savingsGoal;if(!g)return;
+  switchTab('add');setType('move');
+  const to=document.getElementById('moveTo');if(to)to.value=g.accountId;
+  const amt=document.getElementById('moveAmt');if(amt)amt.focus();
+}
+function checkGoalMilestone(){
+  const g=data.savingsGoal;if(!g||!(g.target>0)||g.celebrated)return;
+  const bal=data.balances[g.accountId]||0;
+  if(bal>=g.target){
+    g.celebrated=true;debouncedSync();
+    celebrate(`🎉 里程碑达成！「${g.name}」已攒到 ${fmtCur(getAccount(g.accountId)?.currency||'CNY',g.target)}`);
+  }
+}
+
+/* ===== 庆祝撒花（手写 canvas，只动 transform/opacity 等价的位图绘制） ===== */
+function celebrate(msg){
+  if(msg)showToast(msg);
+  if(prefersReducedMotion())return;
+  const old=document.getElementById('confettiCanvas');if(old)old.remove();
+  const cv=document.createElement('canvas');cv.id='confettiCanvas';document.body.appendChild(cv);
+  const dpr=window.devicePixelRatio||1;
+  cv.width=innerWidth*dpr;cv.height=innerHeight*dpr;
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+  const colors=['#c9a84c','#a08232','#e6d9b8','#c94432','#1a1a2e'];
+  const parts=Array.from({length:90},()=>({x:Math.random()*innerWidth,y:-20-Math.random()*innerHeight*.3,vx:(Math.random()-.5)*2.2,vy:2+Math.random()*3.2,w:5+Math.random()*5,h:8+Math.random()*6,rot:Math.random()*Math.PI,vr:(Math.random()-.5)*.25,c:colors[Math.random()*colors.length|0]}));
+  const t0=performance.now();
+  (function frame(now){
+    const t=(now-t0)/1800;
+    if(t>=1||!cv.isConnected){cv.remove();return}
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+    ctx.globalAlpha=t>.75?Math.max(0,(1-t)*4):1;
+    parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.05;p.rot+=p.vr;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot);ctx.fillStyle=p.c;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore()});
+    requestAnimationFrame(frame);
+  })(t0);
+}
+
+/* ===== 月度账单回顾（纯展示层，明细跳转到账单页） ===== */
+let reviewYM='';
+function shiftYM(ym,d){const p=ym.split('-');const dt=new Date(Number(p[0]),Number(p[1])-1+d,1);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')}
+function openMonthlyReview(){reviewYM=shiftYM(localYM(),-1);renderReview();document.getElementById('reviewModal').style.display='flex'}
+function closeReviewModal(e){if(!e||e.target===document.getElementById('reviewModal'))document.getElementById('reviewModal').style.display='none'}
+function changeReviewMonth(d){const next=shiftYM(reviewYM,d);if(next>localYM())return;reviewYM=next;renderReview()}
+function reviewGotoRecords(){closeReviewModal();activeYear=parseInt(reviewYM.split('-')[0]);activeMonth=reviewYM;switchTab('records')}
+function renderReview(){
+  const ym=reviewYM,p=ym.split('-');
+  document.getElementById('reviewMonthLabel').textContent=`${p[0]}年${parseInt(p[1])}月`;
+  const nextBtn=document.getElementById('reviewNextBtn');if(nextBtn)nextBtn.disabled=shiftYM(ym,1)>localYM();
+  const body=document.getElementById('reviewBody');
+  const recs=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');
+  if(!recs.length){body.innerHTML='<div class="empty">这个月没有记录</div>';return}
+  const expRecs=recs.filter(r=>r.type==='expense');
+  const inc=recs.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);
+  const exp=expRecs.reduce((s,r)=>s+r.amt,0);
+  const net=inc-exp;
+  const lastExp=data.records.filter(r=>r.type==='expense'&&r.date?.startsWith(shiftYM(ym,-1))).reduce((s,r)=>s+r.amt,0);
+  const top3=expRecs.slice().sort((a,b)=>b.amt-a.amt).slice(0,3);
+  const g=data.savingsGoal,gAcc=g&&getAccount(g.accountId);
+  const deposits=gAcc?data.records.filter(r=>r.type==='transfer'&&r.toWallet===g.accountId&&r.date?.startsWith(ym)).reduce((s,r)=>s+r.amt,0):0;
+  const steps=[];
+  steps.push(`<div class="rv-nums"><div class="rv-num"><div class="rv-num-val income" data-rv="inc"></div><div class="rv-num-lab">收入 · ${recs.length-expRecs.length} 笔</div></div><div class="rv-num"><div class="rv-num-val expense" data-rv="exp"></div><div class="rv-num-lab">支出 · ${expRecs.length} 笔</div></div><div class="rv-num"><div class="rv-num-val neutral" data-rv="net"></div><div class="rv-num-lab">结余</div></div></div>`);
+  if(lastExp>0){const diff=exp-lastExp,pc=Math.round(Math.abs(diff)/lastExp*100);steps.push(`<div class="rv-line">支出比上个月${diff>=0?'多':'少'}了 ${fmt(Math.abs(diff))}（${pc}%）${diff<=0?'，不错的方向。':'。'}</div>`)}
+  if(expRecs.length)steps.push(`<div class="rv-sec-title">支出都花在哪</div>`+buildAskBreakdown(expRecs,'category'));
+  if(top3.length)steps.push(`<div class="rv-sec-title">最大的几笔支出</div><div class="ask-list">${top3.map(askRowHTML).join('')}</div>`);
+  if(gAcc)steps.push(`<div class="rv-line">🎯 本月存入「${esc(g.name)}」 ${fmtCur(gAcc.currency,deposits)}，累计 ${fmtCur(gAcc.currency,data.balances[g.accountId]||0)}${g.target>0?'，里程碑进度 '+Math.min(100,Math.round((data.balances[g.accountId]||0)/g.target*100))+'%':''}</div>`);
+  if(data.budget>0){const used=Math.round(exp/data.budget*100);steps.push(`<div class="rv-line">预算 ${fmt(data.budget)}，这个月用了 ${used}%${exp>data.budget?'，超出 '+fmt(exp-data.budget):'，控制得住。'}</div>`)}
+  steps.push(`<button class="rv-link" onclick="reviewGotoRecords()">查看完整账单 →</button>`);
+  body.innerHTML=steps.map((s,i)=>`<div class="review-step" style="animation-delay:${(i*.45).toFixed(2)}s">${s}</div>`).join('');
+  const roll=(sel,val,f)=>{const e=body.querySelector(sel);if(!e)return;e.textContent=f(0);setTimeout(()=>animateNumber(e,0,val,{format:f,duration:700}),80)};
+  roll('[data-rv="inc"]',inc,fmt);roll('[data-rv="exp"]',exp,fmt);roll('[data-rv="net"]',net,v=>(v>0?'+':'')+fmt(v));
+}
 
 /* ===== 统计页可读结论 ===== */
 function renderFinanceInsights(){
