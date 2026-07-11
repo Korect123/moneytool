@@ -2210,21 +2210,33 @@ async function aiParse() {
 
     parsed.forEach(r => { if (r && r.desc) r.desc = normalizeCat(r.desc, r.note || ''); });
 
-    aiParsedResult = parsed;
-    aiSingleWallet = parsed[0]?.wallet || getAccounts()[0]?.id || 'wx';
-    aiMultiWallets = {};
+    if (parsed.length === 1) {
+      // 单笔：直接填进下方手动表单，字段全部可改，保存走现有 addRecord（不碰扣款逻辑）
+      aiParsedResult = null;
+      document.getElementById('aiPreview').classList.remove('show');
+      prefillFormFromAI(parsed[0]);
+      status.className = 'ai-status ok';
+      status.textContent = '已填入下方表单，可修改后点「记录」';
+    } else if (parsed.length > 1) {
+      aiParsedResult = parsed;
+      aiSingleWallet = parsed[0]?.wallet || getAccounts()[0]?.id || 'wx';
+      aiMultiWallets = {};
 
-    parsed.forEach((r, i) => {
-      aiMultiWallets[i] = r.wallet || getAccounts()[0]?.id || 'wx';
-    });
+      parsed.forEach((r, i) => {
+        aiMultiWallets[i] = r.wallet || getAccounts()[0]?.id || 'wx';
+      });
 
-    renderAiPreview(parsed);
-    document.getElementById('aiPreview').classList.add('show');
+      renderAiPreview(parsed);
+      document.getElementById('aiPreview').classList.add('show');
 
-    status.className = 'ai-status ok';
-    status.textContent = parsed.length > 1
-      ? `识别到 ${parsed.length} 条，确认记录`
-      : '识别完成，确认后直接记录';
+      status.className = 'ai-status ok';
+      status.textContent = `识别到 ${parsed.length} 条，确认记录`;
+    } else {
+      aiParsedResult = null;
+      document.getElementById('aiPreview').classList.remove('show');
+      status.className = 'ai-status err';
+      status.textContent = '没识别到可记录的内容，换个说法再试试';
+    }
   } catch (e) {
     status.className = 'ai-status err';
     status.textContent = '识别失败：' + (e.message || '请检查网络');
@@ -2238,6 +2250,25 @@ function selectMultiWallet(idx,w){aiMultiWallets[idx]=w;const card=document.quer
 function renderAiPreview(records){const single=records.length===1;if(single){const r=records[0];const acc=getAccount(r.wallet||aiSingleWallet);document.getElementById('pvType').textContent=r.type==='expense'?'💸 支出':'💰 收入';document.getElementById('pvAmt').textContent=r.amount?fmtCur(acc?.currency||'CNY',r.amount):'—';document.getElementById('pvDesc').textContent=r.desc||'—';document.getElementById('pvNote').textContent=r.borrower?`借给：${r.borrower}`:(r.note||'—');document.getElementById('pvDate').textContent=r.date?fmtDate(r.date):fmtDate(localDateStr());renderWalletCaps(document.getElementById('pvWalletCaps'),aiSingleWallet,'selectSingleWallet');document.getElementById('aiSinglePreview').style.display='block';document.getElementById('aiMultiPreview').style.display='none';document.getElementById('aiConfirmBtn').textContent='确认记录 →'}else{document.getElementById('aiSinglePreview').style.display='none';document.getElementById('aiMultiPreview').innerHTML='<div class="ai-multi-grid">'+records.map((r,i)=>{const iw=r.wallet||getAccounts()[0]?.id||'wx';const acc=getAccount(iw);return`<div class="ai-multi-card" data-idx="${i}"><div class="ai-multi-top"><span class="ai-multi-badge ${r.type}">${r.type==='expense'?'支出':'收入'}</span><span class="ai-multi-amt">${r.amount?fmtCur(acc?.currency||'CNY',r.amount):'—'}</span></div><div class="ai-multi-detail">${r.desc||'—'}${r.borrower?`<br>借给：${r.borrower}`:''}${r.note?`<br><span style="color:var(--ink3)">${r.note}</span>`:''}<br>${r.date?fmtDate(r.date):'今天'}</div><div class="ai-multi-caps">${getAccounts().map(a=>`<span class="wcap${a.id===iw?' active':''}" data-w="${a.id}" onclick="selectMultiWallet(${i},'${a.id}')">${esc(a.abbr)} ${a.name}</span>`).join('')}</div></div>`}).join('')+'</div>';document.getElementById('aiMultiPreview').style.display='block';document.getElementById('aiConfirmBtn').textContent=`全部记录（${records.length} 笔）→`}}
 function aiConfirmAll(){if(!aiParsedResult||!aiParsedResult.length)return;if(aiParsedResult.length===1){const r=aiParsedResult[0];const amt=parseFloat(r.amount);if(!amt||amt<=0){showToast('金额无效','err');return}const wallet=aiSingleWallet;const type=r.type||'expense';let aw=wallet,rd=false;if(type==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(res.msg,'err');return}aw=res.actualWallet;rd=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=(type==='expense'&&r.desc==='资金流转'&&r.borrower);data.records.unshift({id:Date.now(),type,amt,desc:r.desc||'未备注',wallet:aw,date:r.date||localDateStr(),...(r.note?{note:r.note}:{}),...(rd?{redirected:true}:{}),...(isLoan?{loan:true,borrower:r.borrower,loanStatus:'pending'}:{})});debouncedSync();clearAiInput();renderOverview();renderAddPage();showToast(isLoan?`✓ 已记录，待 ${r.borrower} 还款`:'✓ 已记录');return}let ok=0;aiParsedResult.forEach((r,i)=>{const amt=parseFloat(r.amount);if(!amt||amt<=0)return;const wallet=aiMultiWallets[i]||r.wallet||getAccounts()[0]?.id||'wx';const type=r.type||'expense';let aw=wallet,rd=false;if(type==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(`跳过「${r.desc}」：${res.msg}`,'warn');return}aw=res.actualWallet;rd=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=(type==='expense'&&r.desc==='资金流转'&&r.borrower);data.records.unshift({id:Date.now()+ok,type,amt,desc:r.desc||'未备注',wallet:aw,date:r.date||localDateStr(),...(r.note?{note:r.note}:{}),...(rd?{redirected:true}:{}),...(isLoan?{loan:true,borrower:r.borrower,loanStatus:'pending'}:{})});ok++});debouncedSync();clearAiInput();renderOverview();renderAddPage();showToast(`✓ 已记录 ${ok} 笔`)}
 function clearAiInput(){document.getElementById('aiInput').value='';document.getElementById('aiPreview').classList.remove('show');document.getElementById('aiStatus').textContent='';aiParsedResult=null;aiSingleWallet='';aiMultiWallets={}}
+/* AI 单笔识别结果 → 填进「记一笔」手动表单，用户可改，保存仍走 addRecord（不碰扣款逻辑） */
+function prefillFormFromAI(r){
+  const type=r.type==='income'?'income':'expense';
+  setType(type); // 会重置 selectedCat 并重绘分类网格
+  const amtEl=document.getElementById('amount');
+  if(amtEl)amtEl.value=(r.amount!=null&&r.amount!=='')?String(r.amount):'';
+  const cats=CATS[type]||[];
+  selectedCat=(r.desc&&cats.includes(r.desc))?r.desc:'';
+  renderCatGrid(); // 反映选中的分类，并按需显示备注/借款字段
+  const noteEl=document.getElementById('noteText');
+  if(noteEl)noteEl.value=r.note||'';
+  const borrowerEl=document.getElementById('borrower');
+  if(borrowerEl)borrowerEl.value=r.borrower||'';
+  const walletEl=document.getElementById('wallet');
+  if(walletEl){walletEl.value=getAccount(r.wallet)?r.wallet:(getAccounts()[0]?.id||'wx');updateAmtSym('wallet','amountSym')}
+  const dateEl=document.getElementById('txDate');
+  if(dateEl)dateEl.value=r.date||localDateStr();
+  document.getElementById('normalForm')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
 
 /* ===== 问账本：AI 查询 + 本地算账 ===== */
 async function aiAsk(){
