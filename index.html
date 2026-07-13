@@ -414,14 +414,14 @@ select option{background:#fff;color:var(--ink)}
 .extra-row-status.bad{color:var(--red-t)}
 
 .extra-row-top{
-  display:grid;
-  grid-template-columns:auto minmax(130px,170px) 1fr;
+  display:flex;
   align-items:end;
   gap:9px;
   margin-bottom:11px;
 }
 .extra-field-inline{
   min-width:0;
+  flex:1;
 }
 
 .extra-field-label{
@@ -459,34 +459,6 @@ select option{background:#fff;color:var(--ink)}
   font-weight:700!important;
 }
 
-.extra-wcaps{
-  display:flex;
-  gap:5px;
-  flex-wrap:wrap;
-  align-items:center;
-}
-
-.extra-wcap{
-  padding:6px 10px;
-  border:1.5px solid var(--border2);
-  border-radius:999px;
-  font-size:11px;
-  cursor:pointer;
-  font-family:var(--font);
-  background:#fff;
-  color:var(--ink2);
-  transition:all .15s;
-  display:inline-flex;
-  align-items:center;
-  gap:3px;
-}
-
-.extra-wcap.active{
-  border-color:var(--gold);
-  background:var(--gold-bg);
-  color:var(--gold-t);
-  font-weight:600;
-}
 
 .extra-del{
   background:none;
@@ -570,7 +542,6 @@ select option{background:#fff;color:var(--ink)}
 
 @media(max-width:768px){
   .extra-row-top{
-    grid-template-columns:1fr;
     align-items:stretch;
   }
 }
@@ -1854,19 +1825,15 @@ function renderExtraRows(){
             <input class="extra-amt" type="number" placeholder="0.00" value="${esc(row.amt)}" min="0.01" step="0.01">
           </div>
 
-          <div class="extra-field-inline">
-            <label class="extra-field-label">账户</label>
-            <div class="extra-wcaps">
-              ${getAccounts().map(a=>`
-                <span class="extra-wcap${row.wallet===a.id?' active':''}"
-                  onclick="setExtraWallet(${row.id},'${a.id}')"
-                  style="${row.wallet===a.id?'border-color:'+a.color+';background:'+hexToRgba(a.color,.08)+';color:'+a.color:''}">
-                  ${esc(a.abbr)}
-                </span>
-              `).join('')}
-            </div>
-          </div>
+        </div>
 
+        <div class="extra-cat-title">账户</div>
+
+        <div class="form-wcaps">
+          ${getAccounts().map(a=>`
+            <span class="wcap${row.wallet===a.id?' active':''}"
+              onclick="setExtraWallet(${row.id},'${a.id}')">${accIconSm(a)} ${esc(a.name)}</span>
+          `).join('')}
         </div>
 
         <div class="extra-cat-title">
