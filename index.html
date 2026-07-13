@@ -292,6 +292,13 @@ select option{background:#fff;color:var(--ink)}
 .loan-field{margin-bottom:14px;padding:10px 12px;background:var(--amber-bg);border-radius:var(--r-sm);border:1px solid rgba(184,136,10,.15)}
 .loan-field .form-label{color:var(--amber-t)}
 .note-field{margin-bottom:14px}
+/* 外币折合人民币的小字提示 */
+.r-cny{font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums;margin-top:1px}
+.sw-cny{display:block;font-size:9px;color:var(--ink3);font-weight:400;text-align:right}
+.ov-w-cny{font-size:10px;color:var(--ink3);margin-top:2px;position:relative;z-index:1}
+.hero-asset-cny{font-size:13px;color:var(--ink3);font-weight:500;margin-left:6px;letter-spacing:0}
+.fx-note{font-size:10px;color:var(--amber-t);margin-top:3px}
+
 .form-wcaps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
 .form-wcaps .wcap{padding:8px 12px;font-size:13px}
 .cta{width:100%;padding:12px;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);margin-top:4px;transition:opacity .15s,transform .1s}
@@ -977,6 +984,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
             <div class="sc-row-inline"><span class="sc-inline-label">总预算</span><input class="sc-inline-input" type="number" id="set-budget" placeholder="0" min="0" step="100"><button class="sc-inline-btn primary" onclick="saveBudget()">保存</button><span class="sc-inline-hint">0 = 不限制</span></div>
             <div class="sc-row-inline"><span class="sc-inline-label">分类预算</span><span class="sc-inline-sub">不设置即没有预算</span><button class="sc-inline-btn neutral" onclick="openCategoryBudgetModal()">设置</button></div>
             <div class="sc-divider"></div>
+            <div class="sc-section-label">汇率</div>
+            <div class="sc-row-inline"><span class="sc-inline-label">补全历史汇率</span><span class="sc-inline-sub" id="fxStatus">给外币旧记录按当时日期补上真实汇率</span><button class="sc-inline-btn neutral" onclick="backfillHistoricalFx()">补全</button></div>
+            <div class="sc-divider"></div>
             <div class="sc-section-label">存钱目标</div>
             <div id="goalManage"></div>
             <div class="sc-divider"></div>
@@ -1236,6 +1246,71 @@ function hexToRgba(hex,a){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.sli
 function fmtAmt(walletId,n){const acc=getAccount(walletId);return(acc?curSym(acc.currency):'¥')+' '+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
 function fmtCur(cur,n){return curSym(cur)+' '+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
 function fmt(n){return'¥'+parseFloat(n||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')}
+
+/* ===== 汇率：外币折合人民币 =====
+   fxRates[币种] = 1 单位该币种 值多少人民币。
+   每笔记录记账时把当日汇率冻结进 r.fx，历史账单不随汇率波动而改变。 */
+let fxRates={CNY:1},fxDate='',fxReady=false;
+const FX_CACHE_KEY='fx_rates_cache';
+function recCur(r){return getAccount(r.wallet)?.currency||'CNY'}
+/* 一笔记录折合人民币；汇率未知返回 null（调用方需按"未折算"处理，绝不瞎猜） */
+function cnyOf(r){
+  const cur=recCur(r);
+  if(cur==='CNY')return r.amt;
+  const rate=(r.fx!=null&&r.fx>0)?r.fx:fxRates[cur];
+  return (rate>0)?r.amt*rate:null;
+}
+function sumCny(recs){return recs.reduce((s,r)=>{const v=cnyOf(r);return s+(v==null?0:v)},0)}
+function unconvertedCount(recs){return recs.filter(r=>cnyOf(r)==null).length}
+/* 记账时冻结当日汇率 */
+function fxForCurrency(cur){return cur==='CNY'?1:(fxRates[cur]>0?fxRates[cur]:null)}
+function fxForWallet(walletId){return fxForCurrency(getAccount(walletId)?.currency||'CNY')}
+/* 外币显示「原币（约合 ¥xxx）」；人民币照旧 */
+function cnyHint(cur,amt,fx){
+  if(cur==='CNY')return '';
+  const rate=(fx!=null&&fx>0)?fx:fxRates[cur];
+  return (rate>0)?'≈ '+fmt(amt*rate):'';
+}
+/* 给外币旧记录按其实际日期补上当天的真实汇率（幂等：已有 fx 的不动） */
+async function backfillHistoricalFx(){
+  const missing=(data.records||[]).filter(r=>(r.fx==null)&&recCur(r)!=='CNY'&&r.date);
+  const st=document.getElementById('fxStatus');
+  if(!missing.length){if(st)st.textContent='没有需要补全的记录 ✓';showToast('✓ 没有需要补全的外币记录');return}
+  const dates=[...new Set(missing.map(r=>r.date))];
+  if(st)st.textContent=`补全中… 0/${dates.length}`;
+  const byDate={};let done=0,failed=0;
+  for(const d of dates){
+    try{
+      const res=await fetch('/api/rates?date='+encodeURIComponent(d));
+      if(!res.ok)throw new Error('rates '+res.status);
+      const j=await res.json();
+      if(j.rates?.CNY)byDate[d]=j.rates;else failed++;
+    }catch(e){failed++;console.warn('补全汇率失败',d,e)}
+    done++;if(st)st.textContent=`补全中… ${done}/${dates.length}`;
+  }
+  let filled=0;
+  missing.forEach(r=>{const rate=byDate[r.date]?.[recCur(r)];if(rate>0){r.fx=rate;filled++}});
+  if(filled){debouncedSync();refreshAllUI();renderOverview();renderAddPage()}
+  if(st)st.textContent=`已补全 ${filled} 笔${failed?`（${failed} 个日期获取失败）`:''}`;
+  showToast(filled?`✓ 已补全 ${filled} 笔历史汇率`:'未能补全（汇率源不可用）',filled?'ok':'err');
+}
+async function loadFxRates(){
+  try{
+    const res=await fetch('/api/rates');
+    if(!res.ok)throw new Error('rates '+res.status);
+    const j=await res.json();
+    if(!j.rates?.CNY)throw new Error('bad payload');
+    fxRates=j.rates;fxDate=j.date||'';fxReady=true;
+    try{localStorage.setItem(FX_CACHE_KEY,JSON.stringify({date:fxDate,rates:fxRates}))}catch{}
+  }catch(e){
+    try{
+      const c=JSON.parse(localStorage.getItem(FX_CACHE_KEY)||'null');
+      if(c?.rates?.CNY){fxRates=c.rates;fxDate=c.date||'';fxReady=true}
+      else fxReady=false;
+    }catch{fxReady=false}
+    console.warn('汇率获取失败，使用缓存或降级',e);
+  }
+}
 function fmtDate(s){if(!s)return'';const d=new Date(s+'T00:00:00');return(d.getMonth()+1)+'月'+d.getDate()+'日'}
 function fmtDateFull(s){if(!s)return'';const d=new Date(s+'T00:00:00');const days=['日','一','二','三','四','五','六'];return(d.getMonth()+1)+'月'+d.getDate()+'日 周'+days[d.getDay()]}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -1422,7 +1497,8 @@ function fillFilterWallet(){
 
 function renderSidebarBalances(){
   const el=document.getElementById('sidebarBalances');if(!el)return;
-  el.innerHTML=getAccounts().map(a=>`<div class="sw-row"><span class="sw-name">${accIconSm(a)} ${a.name}</span><span class="sw-bal">${fmtCur(a.currency,data.balances[a.id]||0)}</span></div>`).join('');
+  el.innerHTML=getAccounts().map(a=>{const bal=data.balances[a.id]||0;const h=cnyHint(a.currency,bal);
+    return`<div class="sw-row"><span class="sw-name">${accIconSm(a)} ${a.name}</span><span class="sw-bal">${fmtCur(a.currency,bal)}${h?`<span class="sw-cny">${h}</span>`:''}</span></div>`}).join('');
 }
 
 function renderSettingsBalances(){
@@ -1579,6 +1655,10 @@ function migrateData(){
   if(!data.recurringBills)data.recurringBills=[];
   if(!data.categoryBudgets)data.categoryBudgets={};
   if(data.savingsGoal===undefined)data.savingsGoal=null;
+  /* 汇率字段 backfill：CNY 记录固定为 1；外币记录留空，由「补全历史汇率」按日期回填 */
+  (data.records||[]).forEach(r=>{
+    if(r.fx===undefined&&(getAccount(r.wallet)?.currency||'CNY')==='CNY')r.fx=1;
+  });
   if(!data.balances)data.balances={};
   data.accounts.forEach(a=>{if(data.balances[a.id]===undefined)data.balances[a.id]=0});
   data.records.forEach(r=>{if(r.wallet==='bank')r.wallet='icbc';if(r.fromWallet==='bank')r.fromWallet='icbc';if(r.toWallet==='bank')r.toWallet='icbc'});
@@ -1607,7 +1687,7 @@ let authMode='login';
 function switchAuthTab(mode){authMode=mode;document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',['login','register'][i]===mode));document.getElementById('authBtn').textContent=mode==='login'?'登录':'注册';document.getElementById('authMsg').innerHTML=''}
 async function doAuth(){const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;const btn=document.getElementById('authBtn'),msg=document.getElementById('authMsg');if(!email||!password){msg.className='auth-err';msg.textContent='请填写邮箱和密码';return}if(!sb){showToast('初始化中，请稍候');return}btn.disabled=true;btn.textContent='请稍候…';msg.innerHTML='';try{const res=authMode==='login'?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});if(res.error)throw res.error;if(authMode==='register'&&!res.data.session){msg.className='auth-ok';msg.textContent='注册成功！请查收验证邮件后登录。';btn.disabled=false;btn.textContent='注册'}}catch(e){msg.className='auth-err';msg.textContent=e.message==='Invalid login credentials'?'邮箱或密码错误':e.message;btn.disabled=false;btn.textContent=authMode==='login'?'登录':'注册'}}
 async function doLogout(){await sb.auth.signOut();currentUser=null;cloudLoadOk=false;clearTimeout(retryTimer);retryDelay=0;warnedFail=false;lastShownNums.clear();data={accounts:[],balances:{},records:[],budget:0,recurringBills:[],categoryBudgets:{}};document.getElementById('appWrap').classList.remove('visible');document.getElementById('authWrap').style.display='flex';document.getElementById('authEmail').value='';document.getElementById('authPassword').value='';switchAuthTab('login')}
-async function enterApp(user){currentUser=user;document.getElementById('authWrap').style.display='none';document.getElementById('appWrap').classList.add('visible');document.getElementById('userEmail').textContent=user.email;setTimeout(()=>{const el=document.getElementById('settingsEmail');if(el)el.textContent=user.email},100);document.getElementById('txDate').value=localDateStr();document.getElementById('moveTxDate').value=localDateStr();activeMonth=localYM();activeYear=new Date().getFullYear();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];document.getElementById('monthBadge').textContent=months[new Date().getMonth()]+'月';selectedCat='';await loadFromCloud();refreshAllUI();renderOverview();renderAddPage();renderRecurringDue();const aiBox=document.getElementById('aiBox');if(aiBox)aiBox.style.display='block'}
+async function enterApp(user){currentUser=user;document.getElementById('authWrap').style.display='none';document.getElementById('appWrap').classList.add('visible');document.getElementById('userEmail').textContent=user.email;setTimeout(()=>{const el=document.getElementById('settingsEmail');if(el)el.textContent=user.email},100);document.getElementById('txDate').value=localDateStr();document.getElementById('moveTxDate').value=localDateStr();activeMonth=localYM();activeYear=new Date().getFullYear();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];document.getElementById('monthBadge').textContent=months[new Date().getMonth()]+'月';selectedCat='';await loadFromCloud();await loadFxRates();refreshAllUI();renderOverview();renderAddPage();renderRecurringDue();const aiBox=document.getElementById('aiBox');if(aiBox)aiBox.style.display='block'}
 function initSupabase(){if(typeof supabase!=='undefined'){sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);sb.auth.onAuthStateChange((event,session)=>{if(session?.user)enterApp(session.user);else{document.getElementById('appWrap').classList.remove('visible');document.getElementById('authWrap').style.display='flex'}})}else{if(!initSupabase._c)initSupabase._c=0;initSupabase._c++;if(initSupabase._c<30)setTimeout(initSupabase,500);else console.warn('Supabase CDN 加载超时')}}
 window.addEventListener('load',initSupabase);
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}))}
@@ -1636,7 +1716,7 @@ function renderEditCatGrid(){const cats=CATS[editType]||[];const el=document.get
 function selectEditCat(cat){editSelectedCat=cat;renderEditCatGrid()}
 
 /* ===== 新增记录 ===== */
-function addRecord(){const amt=parseFloat(document.getElementById('amount').value);if(!amt||amt<=0){showToast('请输入有效金额','err');return}if(!selectedCat){showToast('请选择分类','err');return}const wallet=document.getElementById('wallet').value;const date=document.getElementById('txDate').value||localDateStr();const borrower=document.getElementById('borrower').value.trim();const note=document.getElementById('noteText').value.trim();let actualWallet=wallet,redirected=false;if(curType==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(res.msg,'err');return}actualWallet=res.actualWallet;redirected=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=curType==='expense'&&selectedCat==='资金流转'&&borrower!=='';data.records.unshift({id:Date.now(),type:curType,amt,desc:selectedCat,wallet:actualWallet,date,...(note?{note}:{}),...(redirected?{redirected:true}:{}),...(isLoan?{loan:true,borrower,loanStatus:'pending'}:{})});markJustAdded([data.records[0].id]);debouncedSync();document.getElementById('amount').value='';document.getElementById('borrower').value='';document.getElementById('noteText').value='';selectedCat='';renderCatGrid();const accName=getAccount(actualWallet)?.name||'未知';let msg=redirected?`✓ 已记录（从${accName}扣款）`:isLoan?`✓ 已记录，待 ${borrower} 还款`:curType==='expense'?'✓ 支出已记录':'✓ 收入已记录';showToast(msg);renderOverview();renderAddPage();document.getElementById('amount').focus()}
+function addRecord(){const amt=parseFloat(document.getElementById('amount').value);if(!amt||amt<=0){showToast('请输入有效金额','err');return}if(!selectedCat){showToast('请选择分类','err');return}const wallet=document.getElementById('wallet').value;const date=document.getElementById('txDate').value||localDateStr();const borrower=document.getElementById('borrower').value.trim();const note=document.getElementById('noteText').value.trim();let actualWallet=wallet,redirected=false;if(curType==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(res.msg,'err');return}actualWallet=res.actualWallet;redirected=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=curType==='expense'&&selectedCat==='资金流转'&&borrower!=='';data.records.unshift({id:Date.now(),type:curType,amt,desc:selectedCat,wallet:actualWallet,date,fx:fxForWallet(actualWallet),...(note?{note}:{}),...(redirected?{redirected:true}:{}),...(isLoan?{loan:true,borrower,loanStatus:'pending'}:{})});markJustAdded([data.records[0].id]);debouncedSync();document.getElementById('amount').value='';document.getElementById('borrower').value='';document.getElementById('noteText').value='';selectedCat='';renderCatGrid();const accName=getAccount(actualWallet)?.name||'未知';let msg=redirected?`✓ 已记录（从${accName}扣款）`:isLoan?`✓ 已记录，待 ${borrower} 还款`:curType==='expense'?'✓ 支出已记录':'✓ 收入已记录';showToast(msg);renderOverview();renderAddPage();document.getElementById('amount').focus()}
 function addMoveRecord(){const amt=parseFloat(document.getElementById('moveAmt').value);const from=document.getElementById('moveFrom').value;const to=document.getElementById('moveTo').value;const date=document.getElementById('moveTxDate').value||localDateStr();if(!amt||amt<=0){showToast('请输入有效金额','err');return}if(from===to){showToast('转出和转入账户不能相同','err');return}const fromAcc=getAccount(from),toAcc=getAccount(to);if(!fromAcc||!toAcc){showToast('账户不存在','err');return}if(fromAcc.currency!==toAcc.currency){showToast('不能跨币种挪钱','err');return}if((data.balances[from]||0)<amt){showToast(`${fromAcc.name}余额不足（${fmtCur(fromAcc.currency,data.balances[from])}）`,'err');return}data.balances[from]-=amt;data.balances[to]=(data.balances[to]||0)+amt;data.records.unshift({id:Date.now(),type:'transfer',amt,fromWallet:from,toWallet:to,wallet:from,date,note:`${fromAcc.name}挪至${toAcc.name}`});markJustAdded([data.records[0].id]);debouncedSync();document.getElementById('moveAmt').value='';showToast(`✓ 已将 ${fmtCur(fromAcc.currency,amt)} 从${fromAcc.name}挪至${toAcc.name}`);renderOverview();renderAddPage();document.getElementById('moveAmt').focus()}
 
 /* ===== 全局点击委托 ===== */
@@ -1673,7 +1753,7 @@ function deleteRecord(id){
     debouncedSync();renderOverview();renderRecords();renderAddPage();showToast('已恢复');
   });
 }
-function markRepaid(id){const r=data.records.find(x=>x.id===id);if(!r)return;r.loanStatus='repaid';data.balances[r.wallet]=(data.balances[r.wallet]||0)+r.amt;data.records.unshift({id:Date.now(),type:'income',amt:r.amt,desc:'资金流转',wallet:r.wallet,date:localDateStr(),note:`${r.borrower} 已还款`});markJustAdded([data.records[0].id]);debouncedSync();renderOverview();renderRecords();showToast(`✓ ${r.borrower} 还款已记录`)}
+function markRepaid(id){const r=data.records.find(x=>x.id===id);if(!r)return;r.loanStatus='repaid';data.balances[r.wallet]=(data.balances[r.wallet]||0)+r.amt;data.records.unshift({id:Date.now(),type:'income',amt:r.amt,desc:'资金流转',wallet:r.wallet,date:localDateStr(),fx:fxForWallet(r.wallet),note:`${r.borrower} 已还款`});markJustAdded([data.records[0].id]);debouncedSync();renderOverview();renderRecords();showToast(`✓ ${r.borrower} 还款已记录`)}
 
 /* ===== 编辑 ===== */
 function openEditModal(id){const r=data.records.find(x=>x.id===id);if(!r||r.type==='transfer')return;editingId=id;editType=r.type;editSelectedCat=r.desc||'';setEditType(r.type);document.getElementById('editAmt').value=r.amt;document.getElementById('editBorrower').value=r.borrower||'';document.getElementById('editNote').value=r.note||'';fillSelect(document.getElementById('editWallet'),r.wallet);document.getElementById('editDate').value=r.date||localDateStr();updateAmtSym('editWallet','editAmtSym');document.getElementById('editModal').style.display='flex'}
@@ -1773,7 +1853,7 @@ function quickAddRecord(){
   let actualWallet=cardWallet,redirected=false;
   if(qaType==='expense'){const res=deductExpense(cardWallet,amt);if(!res.ok){showToast(res.msg,'err');return}actualWallet=res.actualWallet;redirected=res.redirected}
   else{data.balances[cardWallet]=(data.balances[cardWallet]||0)+amt}
-  data.records.unshift({id:Date.now(),type:qaType,amt,desc:qaCat,wallet:actualWallet,date,...(note?{note}:{}),...(redirected?{redirected:true}:{})});
+  data.records.unshift({id:Date.now(),type:qaType,amt,desc:qaCat,wallet:actualWallet,date,fx:fxForWallet(actualWallet),...(note?{note}:{}),...(redirected?{redirected:true}:{})});
   markJustAdded([data.records[0].id]);
   debouncedSync();
   document.getElementById('qaAmt').value='';document.getElementById('qaNote').value='';qaCat='';
@@ -2103,6 +2183,7 @@ function submitAllRecords(){
       desc:item.cat,
       wallet:actualWallet,
       date:item.date,
+      fx:fxForWallet(actualWallet),
       ...(item.note?{note:item.note}:{}),
       ...(redirected?{redirected:true}:{}),
       ...(isLoan?{loan:true,borrower:item.borrower,loanStatus:'pending'}:{})
@@ -2144,14 +2225,16 @@ function recordHTML(r){
   const noteText=r.note||(r.loan&&r.borrower?`借给：${r.borrower}`:'');
   const editBtn=(!isTransfer&&!r.loan)?`<button class="r-action-btn" data-edit="${r.id}">✎</button>`:'';
   const accIcon=acc?`<span class="w-icon sm" style="background:${acc.color};color:#fff">${esc(acc.abbr)}</span>`:'';
-  return`<div class="record-item${justAddedIds.has(r.id)?' just-added':''}"><div class="r-cat-icon" style="background:${m.bg};color:${m.color}">${catSvg(isTransfer?'资金流转':(r.desc||'未备注'))}</div><div class="r-body"><div class="r-title">${esc(mainDesc)}${loanTag}</div><div class="r-sub">${subLine}${r.redirected?'<span class="r-redirect">自动扣银行卡</span>':''}</div>${noteText?`<div class="r-note">${esc(noteText)}</div>`:''}</div><div class="r-right"><span class="r-amt ${amtClass}">${sign}${fmtAmt(r.wallet,r.amt)}</span><div class="r-actions">${editBtn}<button class="r-action-btn del" data-del="${r.id}">✕</button>${r.loan&&r.loanStatus==='pending'?`<button class="repaid-btn" data-repaid="${r.id}">已还清</button>`:''}</div></div></div>`}
+  const hint=isTransfer?'':cnyHint(recCur(r),r.amt,r.fx);
+  const hintHtml=hint?`<span class="r-cny">${hint}</span>`:'';
+  return`<div class="record-item${justAddedIds.has(r.id)?' just-added':''}"><div class="r-cat-icon" style="background:${m.bg};color:${m.color}">${catSvg(isTransfer?'资金流转':(r.desc||'未备注'))}</div><div class="r-body"><div class="r-title">${esc(mainDesc)}${loanTag}</div><div class="r-sub">${subLine}${r.redirected?'<span class="r-redirect">自动扣银行卡</span>':''}</div>${noteText?`<div class="r-note">${esc(noteText)}</div>`:''}</div><div class="r-right"><span class="r-amt ${amtClass}">${sign}${fmtAmt(r.wallet,r.amt)}</span>${hintHtml}<div class="r-actions">${editBtn}<button class="r-action-btn del" data-del="${r.id}">✕</button>${r.loan&&r.loanStatus==='pending'?`<button class="repaid-btn" data-repaid="${r.id}">已还清</button>`:''}</div></div></div>`}
 
 /* ===== 总览 ===== */
 function renderTrendChart(mo){
   const svg=document.getElementById('trendSvg'),wrap=document.getElementById('trendWrap'),tooltip=document.getElementById('trendTooltip');if(!svg||!wrap)return;
   const now=new Date(),daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),today=now.getDate();
   const ym=localYM();
-  const daily=Array.from({length:daysInMonth},(_,i)=>{const dd=String(i+1).padStart(2,'0');return mo.filter(r=>r.type==='expense'&&r.date===`${ym}-${dd}`).reduce((s,r)=>s+r.amt,0)});
+  const daily=Array.from({length:daysInMonth},(_,i)=>{const dd=String(i+1).padStart(2,'0');return sumCny(mo.filter(r=>r.type==='expense'&&r.date===`${ym}-${dd}`))});
   const maxVal=Math.max(...daily,1);
   const W=wrap.offsetWidth||300,H=72,pad=4;
   const step=(W-pad*2)/(daysInMonth-1||1);
@@ -2178,21 +2261,31 @@ function renderOverview(){
     const entries=Object.entries(byCurrency).filter(([,v])=>v!==0);
     const rows=entries.length?entries:[['CNY',0]];
     const investEntries=Object.entries(investByCur).filter(([,v])=>v!==0);
-    assetEl.innerHTML=rows.map(([c,v],i)=>`<div class="hero-asset-val" data-cur="${c}" style="${i>0?'font-size:20px;margin-top:4px':''}">${fmtCur(c,v)}</div>`).join('')
+    /* 外币行显示「原币（约合 ¥xxx）」；多币种时再给一行合计 */
+    const cnyTotal=rows.reduce((s,[c,v])=>{const rate=fxRates[c];return s+(c==='CNY'?v:(rate>0?v*rate:0))},0);
+    const hasForeign=rows.some(([c,v])=>c!=='CNY'&&v!==0);
+    const allConvertible=rows.every(([c])=>c==='CNY'||fxRates[c]>0);
+    assetEl.innerHTML=rows.map(([c,v],i)=>{
+      const canConv=c!=='CNY'&&fxRates[c]>0;
+      return`<div class="hero-asset-val" data-cur="${c}" style="${i>0?'font-size:20px;margin-top:4px':''}"><span data-num></span>${canConv?`<span class="hero-asset-cny">（约合 ${fmt(v*fxRates[c])}）</span>`:''}</div>`;
+    }).join('')
+      +((hasForeign&&allConvertible)?`<div class="hero-asset-sub">合计约 ${fmt(cnyTotal)}</div>`:'')
       +(investEntries.length?`<div class="hero-asset-sub">投资 ${investEntries.map(([c,v])=>fmtCur(c,v)).join(' + ')}（不计入总资产）</div>`:'');
-    rows.forEach(([c,v])=>setAnimatedNum(assetEl.querySelector(`.hero-asset-val[data-cur="${c}"]`),'asset-'+c,v,x=>fmtCur(c,x)));
+    rows.forEach(([c,v])=>setAnimatedNum(assetEl.querySelector(`.hero-asset-val[data-cur="${c}"] [data-num]`),'asset-'+c,v,x=>fmtCur(c,x)));
   }
   // 侧栏余额
   renderSidebarBalances();
   // 月度收支
   const ym=localYM(),mo=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');
-  const inc=mo.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);
-  const exp=mo.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);
+  const inc=sumCny(mo.filter(r=>r.type==='income'));
+  const exp=sumCny(mo.filter(r=>r.type==='expense'));
   const net=inc-exp;
+  const unconv=unconvertedCount(mo);
   setAnimatedNum(document.getElementById('monthIncome'),'month-inc',inc);
   document.getElementById('monthIncomeSub').textContent=mo.filter(r=>r.type==='income').length+'笔';
   setAnimatedNum(document.getElementById('monthExpense'),'month-exp',exp);
-  document.getElementById('monthExpenseSub').textContent=mo.filter(r=>r.type==='expense').length+'笔';
+  document.getElementById('monthExpenseSub').innerHTML=mo.filter(r=>r.type==='expense').length+'笔'
+    +(unconv?`<span class="fx-note">${unconv} 笔外币未折算（汇率暂不可用）</span>`:'');
   setAnimatedNum(document.getElementById('monthCount'),'month-cnt',mo.length,v=>String(Math.round(v)));
   const netEl=document.getElementById('heroNetVals');
   if(netEl){const cls=net>0?'pos':net<0?'neg':'zero';const arrow=net>0?'↗ ':net<0?'↘ ':'';netEl.innerHTML=`<div class="hero-net-val ${cls}"><span>${arrow}</span><span data-net>${(net>0?'+':'')+fmt(net)}</span></div><div class="hero-net-sub">CNY</div>`;setAnimatedNum(netEl.querySelector('[data-net]'),'month-net',net,v=>(v>0?'+':'')+fmt(v))}
@@ -2210,9 +2303,9 @@ function renderOverview(){
   renderTrendChart(mo);
   // 钱包卡片
   const walletsEl=document.getElementById('ovWallets');
-  if(walletsEl){walletsEl.innerHTML=getAccounts().map(a=>{const bal=data.balances[a.id]||0;return`<div class="ov-wallet-card" onclick="openCardDetail('${a.id}')" style="cursor:pointer;background:linear-gradient(135deg,${hexToRgba(a.color,.06)} 0%,${hexToRgba(a.color,.02)} 100%);border-color:${hexToRgba(a.color,.15)}"><div class="ov-w-glow" style="background:radial-gradient(circle,${a.color} 0%,transparent 70%)"></div><div class="ov-w-icon" style="background:${hexToRgba(a.color,.15)}"><span class="w-icon lg" style="background:${a.color};color:#fff">${esc(a.abbr)}</span></div><div class="ov-w-info"><div class="ov-w-name">${esc(a.name)} <span style="font-size:9px;color:var(--ink3)">${a.currency}</span></div><div class="ov-w-bal" data-wbal="${a.id}">${fmtCur(a.currency,bal)}</div></div></div>`}).join('');getAccounts().forEach(a=>setAnimatedNum(walletsEl.querySelector(`.ov-w-bal[data-wbal="${a.id}"]`),'wallet-'+a.id,data.balances[a.id]||0,x=>fmtCur(a.currency,x)))}
+  if(walletsEl){walletsEl.innerHTML=getAccounts().map(a=>{const bal=data.balances[a.id]||0;return`<div class="ov-wallet-card" onclick="openCardDetail('${a.id}')" style="cursor:pointer;background:linear-gradient(135deg,${hexToRgba(a.color,.06)} 0%,${hexToRgba(a.color,.02)} 100%);border-color:${hexToRgba(a.color,.15)}"><div class="ov-w-glow" style="background:radial-gradient(circle,${a.color} 0%,transparent 70%)"></div><div class="ov-w-icon" style="background:${hexToRgba(a.color,.15)}"><span class="w-icon lg" style="background:${a.color};color:#fff">${esc(a.abbr)}</span></div><div class="ov-w-info"><div class="ov-w-name">${esc(a.name)} <span style="font-size:9px;color:var(--ink3)">${a.currency}</span></div><div class="ov-w-bal" data-wbal="${a.id}"><span data-num></span></div>${cnyHint(a.currency,bal)?`<div class="ov-w-cny">${cnyHint(a.currency,bal)}</div>`:''}</div></div>`}).join('');getAccounts().forEach(a=>setAnimatedNum(walletsEl.querySelector(`.ov-w-bal[data-wbal="${a.id}"] [data-num]`),'wallet-'+a.id,data.balances[a.id]||0,x=>fmtCur(a.currency,x)))}
   // Cat rank
-  const cats=CATS.expense;const catAmts=cats.map(cat=>({cat,amt:mo.filter(r=>r.type==='expense'&&r.desc===cat).reduce((s,r)=>s+r.amt,0)})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
+  const cats=CATS.expense;const catAmts=cats.map(cat=>({cat,amt:sumCny(mo.filter(r=>r.type==='expense'&&r.desc===cat))})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
   const maxAmt=catAmts[0]?.amt||1;const totalExp=catAmts.reduce((s,x)=>s+x.amt,0)||1;
   const el=document.getElementById('ovCatRank');if(el)el.innerHTML=catAmts.length?catAmts.slice(0,5).map(({cat,amt})=>{const m=getCatMeta(cat);const pct=Math.round(amt/totalExp*100);const budget=(data.categoryBudgets||{})[cat]||0;const budgetTxt=budget>0?`<div class="ov-cat-budget ${amt>budget?'over':''}">预算 ${fmt(budget)} · 已用 ${Math.round(amt/budget*100)}%</div>`:'';return`<div class="ov-cat-row"><div class="ov-cat-icon" style="background:${m.bg};color:${m.color}">${catSvg(cat)}</div><div class="ov-cat-body"><div class="ov-cat-name-row"><span class="ov-cat-name">${cat}</span><span class="ov-cat-pct">${pct}%</span><span class="ov-cat-amt">${fmt(amt)}</span></div><div class="ov-cat-bar-wrap"><div class="ov-cat-bar" style="width:${Math.round(amt/maxAmt*100)}%;background:${m.color}"></div></div>${budgetTxt}</div></div>`}).join(''):'<div class="empty" style="padding:1.5rem 0">本月还没有支出记录</div>';
   const recent=data.records.slice(0,4);
@@ -2223,7 +2316,7 @@ function renderOverview(){
 }
 
 /* ===== 记一笔右侧统计 ===== */
-function renderAddPage(){const ym=localYM();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];const mo=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');const inc=mo.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);const exp=mo.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);setAnimatedNum(document.getElementById('addMonthInc'),'add-month-inc',inc);setAnimatedNum(document.getElementById('addMonthExp'),'add-month-exp',exp);setAnimatedNum(document.getElementById('addMonthCnt'),'add-month-cnt',mo.length,v=>String(Math.round(v)));document.getElementById('addPageMonth').textContent=months[new Date().getMonth()]+'月';
+function renderAddPage(){const ym=localYM();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];const mo=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');const inc=sumCny(mo.filter(r=>r.type==='income'));const exp=sumCny(mo.filter(r=>r.type==='expense'));setAnimatedNum(document.getElementById('addMonthInc'),'add-month-inc',inc);setAnimatedNum(document.getElementById('addMonthExp'),'add-month-exp',exp);setAnimatedNum(document.getElementById('addMonthCnt'),'add-month-cnt',mo.length,v=>String(Math.round(v)));document.getElementById('addPageMonth').textContent=months[new Date().getMonth()]+'月';
   const listEl=document.getElementById('addRecentList');
   if(listEl)listEl.innerHTML=data.records.length?data.records.slice(0,12).map(r=>recordHTML(r)).join(''):'<div class="empty">还没有记录</div>';
   const cntEl=document.getElementById('addRecentCount');
@@ -2287,8 +2380,8 @@ function renderRecords(){
   if(fw!=='all')list=list.filter(r=>r.wallet===fw||r.fromWallet===fw||r.toWallet===fw);
   if(kw)list=list.filter(r=>[r.desc,r.note,r.borrower].filter(Boolean).join(' ').toLowerCase().includes(kw));
   const mo=list.filter(r=>r.type!=='transfer');
-  const inc=mo.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);
-  const exp=mo.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);
+  const inc=sumCny(mo.filter(r=>r.type==='income'));
+  const exp=sumCny(mo.filter(r=>r.type==='expense'));
   const sumEl=document.getElementById('recordsSummary');
   if(sumEl)sumEl.innerHTML=list.length?`<span class="rs-inc">收入 ${fmt(inc)}</span><span class="rs-exp">支出 ${fmt(exp)}</span><span class="rs-cnt">${list.length} 笔</span>`:'';
   const grouped={};list.forEach(r=>{const d=r.date||'unknown';if(!grouped[d])grouped[d]=[];grouped[d].push(r)});
@@ -2296,17 +2389,17 @@ function renderRecords(){
   const container=document.getElementById('allRecords');
   if(!list.length){container.innerHTML='<div class="empty">这个月还没有记录</div>';return}
   container.innerHTML=dates.map(date=>{
-    const recs=grouped[date];const dayInc=recs.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);const dayExp=recs.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);
+    const recs=grouped[date];const dayInc=sumCny(recs.filter(r=>r.type==='income'));const dayExp=sumCny(recs.filter(r=>r.type==='expense'));
     return`<div class="date-group"><div class="date-group-head"><span class="dg-date">${fmtDateFull(date)}</span><div class="dg-amounts">${dayInc>0?`<span class="dg-inc">+${fmt(dayInc)}</span>`:''}${dayExp>0?`<span class="dg-exp">-${fmt(dayExp)}</span>`:''}</div></div>${recs.map(r=>recordHTML(r)).join('')}</div>`
   }).join('')
 }
 
 /* ===== 图表 ===== */
 function renderCharts(){renderFinanceInsights();renderBarChart();renderPieChart();renderIncExpChart()}
-function renderBarChart(){const months=getLast6Months();const cats=CATS.expense;const datasets=cats.map(cat=>({label:cat,data:months.map(ym=>data.records.filter(r=>r.type==='expense'&&r.desc===cat&&r.date?.startsWith(ym)).reduce((s,r)=>s+r.amt,0)),backgroundColor:CAT_COLORS[cat]||'#78716c',borderRadius:4,borderSkipped:false}));if(barChartInst)barChartInst.destroy();const ctx=document.getElementById('barChart').getContext('2d');if(!datasets.some(ds=>ds.data.some(v=>v>0))){ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);ctx.fillStyle='rgba(0,0,0,.15)';ctx.font='14px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText('暂无支出记录',ctx.canvas.width/2,ctx.canvas.height/2);document.getElementById('barLegend').innerHTML='';return}barChartInst=new Chart(ctx,{type:'bar',data:{labels:months.map(ymLabel),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'rgba(0,0,0,.3)'}},y:{stacked:true,ticks:{callback:v=>'¥'+v,color:'rgba(0,0,0,.3)'},grid:{color:'rgba(0,0,0,.04)'}}},onClick(e,els){if(!els.length)return;showDetailModal(cats[els[0].datasetIndex],months[els[0].index])}}});document.getElementById('barLegend').innerHTML=cats.map(cat=>`<div class="legend-item"><div class="legend-dot" style="background:${CAT_COLORS[cat]||'#78716c'}"></div><span>${cat}</span></div>`).join('')}
-function renderPieChart(){const ym=localYM();const cats=CATS.expense;const values=cats.map(cat=>data.records.filter(r=>r.type==='expense'&&r.desc===cat&&r.date?.startsWith(ym)).reduce((s,r)=>s+r.amt,0));const ac=cats.filter((_,i)=>values[i]>0),av=values.filter(v=>v>0);const total=av.reduce((s,v)=>s+v,0);if(pieChartInst)pieChartInst.destroy();const ctx=document.getElementById('pieChart').getContext('2d');const legEl=document.getElementById('pieLegend');if(!av.length){ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);ctx.fillStyle='rgba(0,0,0,.15)';ctx.font='14px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText('本月暂无支出记录',ctx.canvas.width/2,ctx.canvas.height/2);if(legEl)legEl.innerHTML='';return}pieChartInst=new Chart(ctx,{type:'doughnut',data:{labels:ac,datasets:[{data:av,backgroundColor:ac.map(c=>CAT_COLORS[c]||'#78716c'),borderWidth:3,borderColor:'rgba(255,255,255,.9)'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.raw)} (${Math.round(c.raw/total*100)}%)`}}},onClick(e,els){if(!els.length)return;showDetailModal(ac[els[0].index],localYM())}}});if(legEl)legEl.innerHTML=ac.map((cat,i)=>{const pct=total>0?Math.round(av[i]/total*100):0;return`<div class="pl-item"><div class="pl-dot" style="background:${CAT_COLORS[cat]||'#78716c'}"></div><span class="pl-name">${esc(cat)}</span><span class="pl-amt">${fmt(av[i])} · ${pct}%</span></div>`}).join('')}
-function renderIncExpChart(){const months=getLast6Months();if(incexpChartInst)incexpChartInst.destroy();const ctx=document.getElementById('incexpChart').getContext('2d');incexpChartInst=new Chart(ctx,{type:'bar',data:{labels:months.map(ymLabel),datasets:[{label:'收入',data:months.map(ym=>data.records.filter(r=>r.type==='income'&&r.date?.startsWith(ym)).reduce((s,r)=>s+r.amt,0)),backgroundColor:'rgba(160,130,50,.4)',borderColor:'#a08232',borderWidth:1.5,borderRadius:4},{label:'支出',data:months.map(ym=>data.records.filter(r=>r.type==='expense'&&r.date?.startsWith(ym)).reduce((s,r)=>s+r.amt,0)),backgroundColor:'rgba(201,68,50,.4)',borderColor:'#c94432',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'rgba(0,0,0,.4)',font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},scales:{x:{grid:{display:false},ticks:{color:'rgba(0,0,0,.3)'}},y:{ticks:{callback:v=>'¥'+v,color:'rgba(0,0,0,.3)'},grid:{color:'rgba(0,0,0,.04)'}}}}})}
-function showDetailModal(cat,ym){const[y,m]=ym.split('-');const list=data.records.filter(r=>r.type==='expense'&&r.desc===cat&&r.date?.startsWith(ym));const total=list.reduce((s,r)=>s+r.amt,0);document.getElementById('modalTitle').textContent=cat;document.getElementById('modalSub').textContent=`${y}年${parseInt(m)}月`;document.getElementById('modalTotal').innerHTML=`共 ${list.length} 笔，合计 <strong>${fmt(total)}</strong>`;document.getElementById('modalRecords').innerHTML=list.length?list.map(r=>recordHTML(r)).join(''):'<div class="empty">暂无记录</div>';document.getElementById('detailModal').style.display='flex'}
+function renderBarChart(){const months=getLast6Months();const cats=CATS.expense;const datasets=cats.map(cat=>({label:cat,data:months.map(ym=>sumCny(data.records.filter(r=>r.type==='expense'&&r.desc===cat&&r.date?.startsWith(ym)))),backgroundColor:CAT_COLORS[cat]||'#78716c',borderRadius:4,borderSkipped:false}));if(barChartInst)barChartInst.destroy();const ctx=document.getElementById('barChart').getContext('2d');if(!datasets.some(ds=>ds.data.some(v=>v>0))){ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);ctx.fillStyle='rgba(0,0,0,.15)';ctx.font='14px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText('暂无支出记录',ctx.canvas.width/2,ctx.canvas.height/2);document.getElementById('barLegend').innerHTML='';return}barChartInst=new Chart(ctx,{type:'bar',data:{labels:months.map(ymLabel),datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},scales:{x:{stacked:true,grid:{display:false},ticks:{color:'rgba(0,0,0,.3)'}},y:{stacked:true,ticks:{callback:v=>'¥'+v,color:'rgba(0,0,0,.3)'},grid:{color:'rgba(0,0,0,.04)'}}},onClick(e,els){if(!els.length)return;showDetailModal(cats[els[0].datasetIndex],months[els[0].index])}}});document.getElementById('barLegend').innerHTML=cats.map(cat=>`<div class="legend-item"><div class="legend-dot" style="background:${CAT_COLORS[cat]||'#78716c'}"></div><span>${cat}</span></div>`).join('')}
+function renderPieChart(){const ym=localYM();const cats=CATS.expense;const values=cats.map(cat=>sumCny(data.records.filter(r=>r.type==='expense'&&r.desc===cat&&r.date?.startsWith(ym))));const ac=cats.filter((_,i)=>values[i]>0),av=values.filter(v=>v>0);const total=av.reduce((s,v)=>s+v,0);if(pieChartInst)pieChartInst.destroy();const ctx=document.getElementById('pieChart').getContext('2d');const legEl=document.getElementById('pieLegend');if(!av.length){ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);ctx.fillStyle='rgba(0,0,0,.15)';ctx.font='14px system-ui,sans-serif';ctx.textAlign='center';ctx.fillText('本月暂无支出记录',ctx.canvas.width/2,ctx.canvas.height/2);if(legEl)legEl.innerHTML='';return}pieChartInst=new Chart(ctx,{type:'doughnut',data:{labels:ac,datasets:[{data:av,backgroundColor:ac.map(c=>CAT_COLORS[c]||'#78716c'),borderWidth:3,borderColor:'rgba(255,255,255,.9)'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${fmt(c.raw)} (${Math.round(c.raw/total*100)}%)`}}},onClick(e,els){if(!els.length)return;showDetailModal(ac[els[0].index],localYM())}}});if(legEl)legEl.innerHTML=ac.map((cat,i)=>{const pct=total>0?Math.round(av[i]/total*100):0;return`<div class="pl-item"><div class="pl-dot" style="background:${CAT_COLORS[cat]||'#78716c'}"></div><span class="pl-name">${esc(cat)}</span><span class="pl-amt">${fmt(av[i])} · ${pct}%</span></div>`}).join('')}
+function renderIncExpChart(){const months=getLast6Months();if(incexpChartInst)incexpChartInst.destroy();const ctx=document.getElementById('incexpChart').getContext('2d');incexpChartInst=new Chart(ctx,{type:'bar',data:{labels:months.map(ymLabel),datasets:[{label:'收入',data:months.map(ym=>sumCny(data.records.filter(r=>r.type==='income'&&r.date?.startsWith(ym)))),backgroundColor:'rgba(160,130,50,.4)',borderColor:'#a08232',borderWidth:1.5,borderRadius:4},{label:'支出',data:months.map(ym=>sumCny(data.records.filter(r=>r.type==='expense'&&r.date?.startsWith(ym)))),backgroundColor:'rgba(201,68,50,.4)',borderColor:'#c94432',borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'rgba(0,0,0,.4)',font:{size:11}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt(c.raw)}`}}},scales:{x:{grid:{display:false},ticks:{color:'rgba(0,0,0,.3)'}},y:{ticks:{callback:v=>'¥'+v,color:'rgba(0,0,0,.3)'},grid:{color:'rgba(0,0,0,.04)'}}}}})}
+function showDetailModal(cat,ym){const[y,m]=ym.split('-');const list=data.records.filter(r=>r.type==='expense'&&r.desc===cat&&r.date?.startsWith(ym));const total=sumCny(list);document.getElementById('modalTitle').textContent=cat;document.getElementById('modalSub').textContent=`${y}年${parseInt(m)}月`;document.getElementById('modalTotal').innerHTML=`共 ${list.length} 笔，合计 <strong>${fmt(total)}</strong>`;document.getElementById('modalRecords').innerHTML=list.length?list.map(r=>recordHTML(r)).join(''):'<div class="empty">暂无记录</div>';document.getElementById('detailModal').style.display='flex'}
 function closeDetailModal(e){if(!e||e.target===document.getElementById('detailModal'))document.getElementById('detailModal').style.display='none'}
 
 /* ===== AI ===== */
@@ -2383,7 +2476,7 @@ async function aiParse() {
 function selectSingleWallet(w){aiSingleWallet=w;document.querySelectorAll('#pvWalletCaps .wcap').forEach(btn=>btn.classList.toggle('active',btn.dataset.w===w))}
 function selectMultiWallet(idx,w){aiMultiWallets[idx]=w;const card=document.querySelector(`.ai-multi-card[data-idx="${idx}"]`);if(card)card.querySelectorAll('.wcap').forEach(btn=>btn.classList.toggle('active',btn.dataset.w===w))}
 function renderAiPreview(records){const single=records.length===1;if(single){const r=records[0];const acc=getAccount(r.wallet||aiSingleWallet);document.getElementById('pvType').textContent=r.type==='expense'?'💸 支出':'💰 收入';document.getElementById('pvAmt').textContent=r.amount?fmtCur(acc?.currency||'CNY',r.amount):'—';document.getElementById('pvDesc').textContent=r.desc||'—';document.getElementById('pvNote').textContent=r.borrower?`借给：${r.borrower}`:(r.note||'—');document.getElementById('pvDate').textContent=r.date?fmtDate(r.date):fmtDate(localDateStr());renderWalletCaps(document.getElementById('pvWalletCaps'),aiSingleWallet,'selectSingleWallet');document.getElementById('aiSinglePreview').style.display='block';document.getElementById('aiMultiPreview').style.display='none';document.getElementById('aiConfirmBtn').textContent='确认记录 →'}else{document.getElementById('aiSinglePreview').style.display='none';document.getElementById('aiMultiPreview').innerHTML='<div class="ai-multi-grid">'+records.map((r,i)=>{const iw=r.wallet||getAccounts()[0]?.id||'wx';const acc=getAccount(iw);return`<div class="ai-multi-card" data-idx="${i}"><div class="ai-multi-top"><span class="ai-multi-badge ${r.type}">${r.type==='expense'?'支出':'收入'}</span><span class="ai-multi-amt">${r.amount?fmtCur(acc?.currency||'CNY',r.amount):'—'}</span></div><div class="ai-multi-detail">${r.desc||'—'}${r.borrower?`<br>借给：${r.borrower}`:''}${r.note?`<br><span style="color:var(--ink3)">${r.note}</span>`:''}<br>${r.date?fmtDate(r.date):'今天'}</div><div class="ai-multi-caps">${getAccounts().map(a=>`<span class="wcap${a.id===iw?' active':''}" data-w="${a.id}" onclick="selectMultiWallet(${i},'${a.id}')">${esc(a.abbr)} ${a.name}</span>`).join('')}</div></div>`}).join('')+'</div>';document.getElementById('aiMultiPreview').style.display='block';document.getElementById('aiConfirmBtn').textContent=`全部记录（${records.length} 笔）→`}}
-function aiConfirmAll(){if(!aiParsedResult||!aiParsedResult.length)return;if(aiParsedResult.length===1){const r=aiParsedResult[0];const amt=parseFloat(r.amount);if(!amt||amt<=0){showToast('金额无效','err');return}const wallet=aiSingleWallet;const type=r.type||'expense';let aw=wallet,rd=false;if(type==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(res.msg,'err');return}aw=res.actualWallet;rd=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=(type==='expense'&&r.desc==='资金流转'&&r.borrower);data.records.unshift({id:Date.now(),type,amt,desc:r.desc||'未备注',wallet:aw,date:r.date||localDateStr(),...(r.note?{note:r.note}:{}),...(rd?{redirected:true}:{}),...(isLoan?{loan:true,borrower:r.borrower,loanStatus:'pending'}:{})});markJustAdded([data.records[0].id]);debouncedSync();clearAiInput();renderOverview();renderAddPage();showToast(isLoan?`✓ 已记录，待 ${r.borrower} 还款`:'✓ 已记录');return}let ok=0;aiParsedResult.forEach((r,i)=>{const amt=parseFloat(r.amount);if(!amt||amt<=0)return;const wallet=aiMultiWallets[i]||r.wallet||getAccounts()[0]?.id||'wx';const type=r.type||'expense';let aw=wallet,rd=false;if(type==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(`跳过「${r.desc}」：${res.msg}`,'warn');return}aw=res.actualWallet;rd=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=(type==='expense'&&r.desc==='资金流转'&&r.borrower);data.records.unshift({id:Date.now()+ok,type,amt,desc:r.desc||'未备注',wallet:aw,date:r.date||localDateStr(),...(r.note?{note:r.note}:{}),...(rd?{redirected:true}:{}),...(isLoan?{loan:true,borrower:r.borrower,loanStatus:'pending'}:{})});markJustAdded([data.records[0].id]);ok++});debouncedSync();clearAiInput();renderOverview();renderAddPage();showToast(`✓ 已记录 ${ok} 笔`)}
+function aiConfirmAll(){if(!aiParsedResult||!aiParsedResult.length)return;if(aiParsedResult.length===1){const r=aiParsedResult[0];const amt=parseFloat(r.amount);if(!amt||amt<=0){showToast('金额无效','err');return}const wallet=aiSingleWallet;const type=r.type||'expense';let aw=wallet,rd=false;if(type==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(res.msg,'err');return}aw=res.actualWallet;rd=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=(type==='expense'&&r.desc==='资金流转'&&r.borrower);data.records.unshift({id:Date.now(),type,amt,desc:r.desc||'未备注',wallet:aw,date:r.date||localDateStr(),fx:fxForWallet(aw),...(r.note?{note:r.note}:{}),...(rd?{redirected:true}:{}),...(isLoan?{loan:true,borrower:r.borrower,loanStatus:'pending'}:{})});markJustAdded([data.records[0].id]);debouncedSync();clearAiInput();renderOverview();renderAddPage();showToast(isLoan?`✓ 已记录，待 ${r.borrower} 还款`:'✓ 已记录');return}let ok=0;aiParsedResult.forEach((r,i)=>{const amt=parseFloat(r.amount);if(!amt||amt<=0)return;const wallet=aiMultiWallets[i]||r.wallet||getAccounts()[0]?.id||'wx';const type=r.type||'expense';let aw=wallet,rd=false;if(type==='expense'){const res=deductExpense(wallet,amt);if(!res.ok){showToast(`跳过「${r.desc}」：${res.msg}`,'warn');return}aw=res.actualWallet;rd=res.redirected}else{data.balances[wallet]=(data.balances[wallet]||0)+amt}const isLoan=(type==='expense'&&r.desc==='资金流转'&&r.borrower);data.records.unshift({id:Date.now()+ok,type,amt,desc:r.desc||'未备注',wallet:aw,date:r.date||localDateStr(),fx:fxForWallet(aw),...(r.note?{note:r.note}:{}),...(rd?{redirected:true}:{}),...(isLoan?{loan:true,borrower:r.borrower,loanStatus:'pending'}:{})});markJustAdded([data.records[0].id]);ok++});debouncedSync();clearAiInput();renderOverview();renderAddPage();showToast(`✓ 已记录 ${ok} 笔`)}
 function clearAiInput(){document.getElementById('aiInput').value='';document.getElementById('aiPreview').classList.remove('show');document.getElementById('aiStatus').textContent='';aiParsedResult=null;aiSingleWallet='';aiMultiWallets={}}
 /* AI 单笔识别结果 → 填进「记一笔」手动表单，用户可改，保存仍走 addRecord（不碰扣款逻辑） */
 function prefillFormFromAI(r){
@@ -2602,7 +2695,7 @@ function runRecurringBill(id){
     const res=deductExpense(b.wallet,b.amt);if(!res.ok){showToast(res.msg,'err');return}
     actualWallet=res.actualWallet;redirected=res.redirected;
   }else data.balances[b.wallet]=(data.balances[b.wallet]||0)+b.amt;
-  data.records.unshift({id:Date.now(),type:b.type,amt:b.amt,desc:b.desc,wallet:actualWallet,date:localDateStr(),note:b.note||b.name,recurringId:b.id,recurringName:b.name,...(redirected?{redirected:true}:{})});
+  data.records.unshift({id:Date.now(),type:b.type,amt:b.amt,desc:b.desc,wallet:actualWallet,date:localDateStr(),fx:fxForWallet(actualWallet),note:b.note||b.name,recurringId:b.id,recurringName:b.name,...(redirected?{redirected:true}:{})});
   markJustAdded([data.records[0].id]);
   b.lastRun=recurringRunKey(b);
   debouncedSync();refreshAllUI();renderOverview();renderAddPage();renderRecurringDue();renderRecurringManageList();showToast('✓ 已生成本月账单');
@@ -2735,10 +2828,10 @@ function renderReview(){
   const recs=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');
   if(!recs.length){body.innerHTML='<div class="empty">这个月没有记录</div>';return}
   const expRecs=recs.filter(r=>r.type==='expense');
-  const inc=recs.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);
-  const exp=expRecs.reduce((s,r)=>s+r.amt,0);
+  const inc=sumCny(recs.filter(r=>r.type==='income'));
+  const exp=sumCny(expRecs);
   const net=inc-exp;
-  const lastExp=data.records.filter(r=>r.type==='expense'&&r.date?.startsWith(shiftYM(ym,-1))).reduce((s,r)=>s+r.amt,0);
+  const lastExp=sumCny(data.records.filter(r=>r.type==='expense'&&r.date?.startsWith(shiftYM(ym,-1))));
   const top3=expRecs.slice().sort((a,b)=>b.amt-a.amt).slice(0,3);
   const g=data.savingsGoal,gAcc=g&&getAccount(g.accountId);
   const deposits=gAcc?data.records.filter(r=>r.type==='transfer'&&r.toWallet===g.accountId&&r.date?.startsWith(ym)).reduce((s,r)=>s+r.amt,0):0;
@@ -2761,8 +2854,8 @@ function renderFinanceInsights(){
   const ym=localYM(),months=getLast6Months(),lastYm=months[months.length-2];
   const cur=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');
   const last=data.records.filter(r=>r.date?.startsWith(lastYm)&&r.type!=='transfer');
-  const curExp=cur.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0),curInc=cur.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0),lastExp=last.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);
-  const byCat={};cur.filter(r=>r.type==='expense').forEach(r=>byCat[r.desc]=(byCat[r.desc]||0)+r.amt);
+  const curExp=sumCny(cur.filter(r=>r.type==='expense')),curInc=sumCny(cur.filter(r=>r.type==='income')),lastExp=sumCny(last.filter(r=>r.type==='expense'));
+  const byCat={};cur.filter(r=>r.type==='expense').forEach(r=>{const v=cnyOf(r);byCat[r.desc]=(byCat[r.desc]||0)+(v==null?0:v)});
   const topCat=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];
   if(!cur.length){el.innerHTML='<div class="insight-item">本月还没有记录，暂时无法生成财务结论。</div>';return}
   const insights=[];const net=curInc-curExp;
@@ -2788,13 +2881,14 @@ async function aiFinanceInsight() {
   const incomeRecords = monthRecords.filter(r => r.type === 'income');
   const expenseRecords = monthRecords.filter(r => r.type === 'expense');
 
-  const income = incomeRecords.reduce((s, r) => s + r.amt, 0);
-  const expense = expenseRecords.reduce((s, r) => s + r.amt, 0);
+  const income = sumCny(incomeRecords);
+  const expense = sumCny(expenseRecords);
 
   const categorySummary = {};
   expenseRecords.forEach(r => {
     const cat = r.desc || '未备注';
-    categorySummary[cat] = (categorySummary[cat] || 0) + r.amt;
+    const v = cnyOf(r);
+    categorySummary[cat] = (categorySummary[cat] || 0) + (v == null ? 0 : v);
   });
 
   const topCategory = Object.entries(categorySummary)
