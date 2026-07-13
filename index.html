@@ -548,7 +548,11 @@ select option{background:#fff;color:var(--ink)}
 .submit-all-btn{width:100%;padding:12px;background:var(--gold);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);margin-top:7px;transition:opacity .15s;display:flex;align-items:center;justify-content:center;gap:7px}
 .submit-all-btn:hover{opacity:.88}
 .submit-all-count{background:rgba(255,255,255,.2);border-radius:999px;padding:1px 8px;font-size:11px}
-.add-right{display:flex;flex-direction:column;gap:12px}
+.add-right{display:flex;flex-direction:column;gap:12px;position:sticky;top:20px}
+.add-recent-list{max-height:46vh;overflow-y:auto;margin:0 -6px;padding:0 6px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+.add-recent-list::-webkit-scrollbar{width:4px}
+.add-recent-list::-webkit-scrollbar-track{background:transparent}
+.add-recent-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 .month-summary-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:18px;box-shadow:var(--sh)}
 .ms-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .ms-title{font-size:11px;color:var(--ink3);font-weight:500;letter-spacing:.02em}
@@ -919,6 +923,14 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
                 <div class="ms-divider"></div>
                 <div class="ms-item"><div class="ms-val neutral" id="addMonthCnt">0</div><div class="ms-sub">笔</div></div>
               </div>
+            </div>
+            <div class="ov-panel">
+              <div class="panel-head">
+                <div class="ov-panel-title" style="margin:0">最近记录</div>
+                <div class="panel-count" id="addRecentCount"></div>
+              </div>
+              <div class="add-recent-list" id="addRecentList"></div>
+              <button class="rv-link" onclick="switchTab('records')">查看全部账单 →</button>
             </div>
           </div>
         </div>
@@ -2147,7 +2159,12 @@ function renderOverview(){
 }
 
 /* ===== 记一笔右侧统计 ===== */
-function renderAddPage(){const ym=localYM();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];const mo=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');const inc=mo.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);const exp=mo.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);setAnimatedNum(document.getElementById('addMonthInc'),'add-month-inc',inc);setAnimatedNum(document.getElementById('addMonthExp'),'add-month-exp',exp);setAnimatedNum(document.getElementById('addMonthCnt'),'add-month-cnt',mo.length,v=>String(Math.round(v)));document.getElementById('addPageMonth').textContent=months[new Date().getMonth()]+'月'}
+function renderAddPage(){const ym=localYM();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];const mo=data.records.filter(r=>r.date?.startsWith(ym)&&r.type!=='transfer');const inc=mo.filter(r=>r.type==='income').reduce((s,r)=>s+r.amt,0);const exp=mo.filter(r=>r.type==='expense').reduce((s,r)=>s+r.amt,0);setAnimatedNum(document.getElementById('addMonthInc'),'add-month-inc',inc);setAnimatedNum(document.getElementById('addMonthExp'),'add-month-exp',exp);setAnimatedNum(document.getElementById('addMonthCnt'),'add-month-cnt',mo.length,v=>String(Math.round(v)));document.getElementById('addPageMonth').textContent=months[new Date().getMonth()]+'月';
+  const listEl=document.getElementById('addRecentList');
+  if(listEl)listEl.innerHTML=data.records.length?data.records.slice(0,12).map(r=>recordHTML(r)).join(''):'<div class="empty">还没有记录</div>';
+  const cntEl=document.getElementById('addRecentCount');
+  if(cntEl)cntEl.textContent=data.records.length?`共 ${data.records.length} 条`:'';
+}
 
 /* ===== 账单明细 ===== */
 function renderMonthTabs(){
