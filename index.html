@@ -415,7 +415,7 @@ select option{background:#fff;color:var(--ink)}
 
 .extra-row-top{
   display:grid;
-  grid-template-columns:auto minmax(130px,170px) 1fr auto;
+  grid-template-columns:auto minmax(130px,170px) 1fr;
   align-items:end;
   gap:9px;
   margin-bottom:11px;
@@ -487,21 +487,6 @@ select option{background:#fff;color:var(--ink)}
   color:var(--gold-t);
   font-weight:600;
 }
-
-.extra-expand-btn{
-  padding:7px 11px;
-  border:1px solid var(--border2);
-  background:transparent;
-  border-radius:999px;
-  font-size:11px;
-  cursor:pointer;
-  font-family:var(--font);
-  color:var(--ink3);
-  transition:all .15s;
-  flex-shrink:0;
-}
-
-.extra-expand-btn.active{background:var(--gold-bg);color:var(--gold-t);border-color:var(--gold)}
 
 .extra-del{
   background:none;
@@ -1764,7 +1749,6 @@ function addExtraRow(afterIndex){
     wallet:mainWallet,
     date:mainDate,
     note:'',
-    expanded:false,
     error:''
   };
 
@@ -1794,15 +1778,6 @@ function toggleExtraType(id){
   row.cat='';
   row.error='切换收入/支出后，请重新选择用途';
 
-  renderExtraRows();
-}
-
-function toggleExtraExpand(id){
-  syncExtraRowsFromDOM();
-  const row=extraRows.find(r=>r.id===id);
-  if(!row)return;
-
-  row.expanded=!row.expanded;
   renderExtraRows();
 }
 
@@ -1892,9 +1867,6 @@ function renderExtraRows(){
             </div>
           </div>
 
-          <button class="extra-expand-btn${row.expanded?' active':''}" onclick="toggleExtraExpand(${row.id})">
-            备注/日期
-          </button>
         </div>
 
         <div class="extra-cat-title">
@@ -1919,18 +1891,16 @@ function renderExtraRows(){
 
         ${row.error?`<div class="extra-error">⚠ ${esc(row.error)}</div>`:''}
 
-        ${row.expanded?`
-          <div class="extra-row-detail">
-            <div>
-              <label class="form-label">备注</label>
-              <input class="extra-note-input" type="text" placeholder="可选" value="${esc(row.note)}">
-            </div>
-            <div>
-              <label class="form-label">日期</label>
-              <input class="extra-date-input" type="date" value="${row.date}">
-            </div>
+        <div class="extra-row-detail">
+          <div>
+            <label class="form-label">备注</label>
+            <input class="extra-note-input" type="text" placeholder="可选" value="${esc(row.note)}">
           </div>
-        `:''}
+          <div>
+            <label class="form-label">日期</label>
+            <input class="extra-date-input" type="date" value="${row.date}">
+          </div>
+        </div>
 
         ${index===extraRows.length-1?`
           <button class="add-more-btn" onclick="addExtraRow(${index+1})">＋ 再记一笔</button>
