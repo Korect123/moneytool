@@ -798,7 +798,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
       <div class="sw-label">余额</div>
       <div id="sidebarBalances"></div>
       <div class="user-row"><span class="user-email" id="userEmail"></span><button class="logout-btn" onclick="doLogout()">退出</button></div>
-      <div class="sync-indicator"><div class="sync-dot" id="syncDot"></div><span id="syncText">—</span></div>
+      <div class="sync-indicator" onclick="retryLoad()" style="cursor:pointer" title="点击重试连接云端"><div class="sync-dot" id="syncDot"></div><span id="syncText">—</span></div>
     </div>
   </aside>
 
@@ -1498,9 +1498,73 @@ function deleteAccount(id){
 }
 
 /* ===== 云端同步 ===== */
-async function saveToCloud(){if(!currentUser)return;setSS('syncing','同步中…');try{const{error}=await sb.from('ledger').upsert({user_id:currentUser.id,data,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(error)throw error;setSS('ok','已同步 '+new Date().toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit'}))}catch(e){setSS('err','同步失败');console.warn(e)}}
-async function loadFromCloud(){if(!currentUser)return;setSS('syncing','加载中…');try{const{data:rows,error}=await sb.from('ledger').select('data').eq('user_id',currentUser.id).single();if(error&&error.code!=='PGRST116')throw error;if(rows?.data)data=rows.data;migrateData();setSS('ok','已同步')}catch(e){setSS('err','加载失败');console.warn(e)}}
-function debouncedSync(){clearTimeout(syncTimer);syncTimer=setTimeout(saveToCloud,800)}
+/* 数据安全三道防线：
+   ① cloudLoadOk 守卫：云端没读成功，就绝不允许写云端（否则空 data 会覆盖掉云端历史）
+   ② localStorage 兜底：每次改动立即写本地，云端失败/离线也不丢
+   ③ 失败自动重试（退避）+ 联网即重试 */
+let cloudLoadOk=false,retryTimer=null,retryDelay=0,warnedFail=false;
+const RETRY_STEPS=[5000,15000,60000];
+function localKey(){return currentUser?'ledger_backup_'+currentUser.id:''}
+function saveLocal(dirty=true){
+  const k=localKey();if(!k)return;
+  try{localStorage.setItem(k,JSON.stringify({data,updatedAt:new Date().toISOString(),dirty}))}catch(e){console.warn('本地备份写入失败',e)}
+}
+function loadLocal(){
+  const k=localKey();if(!k)return null;
+  try{const raw=localStorage.getItem(k);return raw?JSON.parse(raw):null}catch(e){return null}
+}
+function markLocalSynced(){const b=loadLocal();if(b)saveLocal(false)}
+function scheduleRetry(){
+  clearTimeout(retryTimer);
+  const wait=RETRY_STEPS[Math.min(retryDelay,RETRY_STEPS.length-1)];
+  retryDelay++;
+  retryTimer=setTimeout(saveToCloud,wait);
+}
+async function saveToCloud(){
+  if(!currentUser)return;
+  if(!cloudLoadOk){setSS('err','只读保护中');return}   /* ← 堵住"空数据覆盖云端" */
+  setSS('syncing','同步中…');
+  try{
+    const{error}=await sb.from('ledger').upsert({user_id:currentUser.id,data,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    if(error)throw error;
+    clearTimeout(retryTimer);retryDelay=0;
+    markLocalSynced();
+    if(warnedFail){warnedFail=false;showToast('✓ 已同步')}
+    setSS('ok','已同步 '+new Date().toLocaleTimeString('zh',{hour:'2-digit',minute:'2-digit'}));
+  }catch(e){
+    saveLocal(true);
+    setSS('err','同步失败（已存本地）');
+    if(!warnedFail){warnedFail=true;showToast('⚠ 同步失败，数据已存本地，正在重试…','warn')}
+    scheduleRetry();
+    console.warn(e);
+  }
+}
+async function loadFromCloud(){
+  if(!currentUser)return;
+  setSS('syncing','加载中…');
+  try{
+    const{data:rows,error}=await sb.from('ledger').select('data,updated_at').eq('user_id',currentUser.id).single();
+    if(error&&error.code!=='PGRST116')throw error;
+    const local=loadLocal();
+    const localNewer=local&&local.dirty&&(!rows?.updated_at||local.updatedAt>rows.updated_at);
+    if(localNewer)data=local.data;              /* 本地有未同步且更新的账 → 用本地并推上去 */
+    else if(rows?.data)data=rows.data;
+    migrateData();
+    cloudLoadOk=true;                            /* 读成功，解锁写入 */
+    setSS('ok','已同步');
+    if(localNewer){showToast('已恢复本地未同步的记录');debouncedSync()}
+    else saveLocal(false);
+  }catch(e){
+    cloudLoadOk=false;                           /* 读失败 → 锁死写入，绝不覆盖云端 */
+    const local=loadLocal();
+    if(local?.data){data=local.data;migrateData();setSS('err','离线（本地数据，只读）');showToast('⚠ 云端加载失败，正在显示本地备份，暂不会写入云端','warn')}
+    else{setSS('err','加载失败（只读）');showToast('⚠ 云端加载失败，已进入只读保护，请检查网络后刷新','err')}
+    console.warn(e);
+  }
+}
+function debouncedSync(){saveLocal(true);clearTimeout(syncTimer);syncTimer=setTimeout(saveToCloud,800)}
+function retryLoad(){if(!cloudLoadOk&&currentUser)loadFromCloud().then(()=>{if(cloudLoadOk){refreshAllUI();renderOverview();renderAddPage();showToast('✓ 已重新连接云端')}})}
+window.addEventListener('online',()=>{if(!cloudLoadOk)retryLoad();else if(warnedFail){clearTimeout(retryTimer);retryDelay=0;saveToCloud()}});
 
 /* ===== 老数据迁移 ===== */
 function migrateData(){
@@ -1542,7 +1606,7 @@ function migrateData(){
 let authMode='login';
 function switchAuthTab(mode){authMode=mode;document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',['login','register'][i]===mode));document.getElementById('authBtn').textContent=mode==='login'?'登录':'注册';document.getElementById('authMsg').innerHTML=''}
 async function doAuth(){const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;const btn=document.getElementById('authBtn'),msg=document.getElementById('authMsg');if(!email||!password){msg.className='auth-err';msg.textContent='请填写邮箱和密码';return}if(!sb){showToast('初始化中，请稍候');return}btn.disabled=true;btn.textContent='请稍候…';msg.innerHTML='';try{const res=authMode==='login'?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});if(res.error)throw res.error;if(authMode==='register'&&!res.data.session){msg.className='auth-ok';msg.textContent='注册成功！请查收验证邮件后登录。';btn.disabled=false;btn.textContent='注册'}}catch(e){msg.className='auth-err';msg.textContent=e.message==='Invalid login credentials'?'邮箱或密码错误':e.message;btn.disabled=false;btn.textContent=authMode==='login'?'登录':'注册'}}
-async function doLogout(){await sb.auth.signOut();currentUser=null;lastShownNums.clear();data={accounts:[],balances:{},records:[],budget:0,recurringBills:[],categoryBudgets:{}};document.getElementById('appWrap').classList.remove('visible');document.getElementById('authWrap').style.display='flex';document.getElementById('authEmail').value='';document.getElementById('authPassword').value='';switchAuthTab('login')}
+async function doLogout(){await sb.auth.signOut();currentUser=null;cloudLoadOk=false;clearTimeout(retryTimer);retryDelay=0;warnedFail=false;lastShownNums.clear();data={accounts:[],balances:{},records:[],budget:0,recurringBills:[],categoryBudgets:{}};document.getElementById('appWrap').classList.remove('visible');document.getElementById('authWrap').style.display='flex';document.getElementById('authEmail').value='';document.getElementById('authPassword').value='';switchAuthTab('login')}
 async function enterApp(user){currentUser=user;document.getElementById('authWrap').style.display='none';document.getElementById('appWrap').classList.add('visible');document.getElementById('userEmail').textContent=user.email;setTimeout(()=>{const el=document.getElementById('settingsEmail');if(el)el.textContent=user.email},100);document.getElementById('txDate').value=localDateStr();document.getElementById('moveTxDate').value=localDateStr();activeMonth=localYM();activeYear=new Date().getFullYear();const months=['一','二','三','四','五','六','七','八','九','十','十一','十二'];document.getElementById('monthBadge').textContent=months[new Date().getMonth()]+'月';selectedCat='';await loadFromCloud();refreshAllUI();renderOverview();renderAddPage();renderRecurringDue();const aiBox=document.getElementById('aiBox');if(aiBox)aiBox.style.display='block'}
 function initSupabase(){if(typeof supabase!=='undefined'){sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);sb.auth.onAuthStateChange((event,session)=>{if(session?.user)enterApp(session.user);else{document.getElementById('appWrap').classList.remove('visible');document.getElementById('authWrap').style.display='flex'}})}else{if(!initSupabase._c)initSupabase._c=0;initSupabase._c++;if(initSupabase._c<30)setTimeout(initSupabase,500);else console.warn('Supabase CDN 加载超时')}}
 window.addEventListener('load',initSupabase);
