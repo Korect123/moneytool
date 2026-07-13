@@ -292,6 +292,8 @@ select option{background:#fff;color:var(--ink)}
 .loan-field{margin-bottom:14px;padding:10px 12px;background:var(--amber-bg);border-radius:var(--r-sm);border:1px solid rgba(184,136,10,.15)}
 .loan-field .form-label{color:var(--amber-t)}
 .note-field{margin-bottom:14px}
+.form-wcaps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.form-wcaps .wcap{padding:8px 12px;font-size:13px}
 .cta{width:100%;padding:12px;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;font-family:var(--font);margin-top:4px;transition:opacity .15s,transform .1s}
 .cta:hover{opacity:.88}.cta:active{transform:scale(.97);opacity:.92}.cta.expense{background:var(--red);color:#fff}.cta.income{background:var(--gold);color:#fff}.cta.move{background:var(--blue);color:#fff}
 .move-form{display:none}.move-form.show{display:block}
@@ -740,6 +742,8 @@ select option{background:#fff;color:var(--ink)}
   .chart-wrap{height:200px}
   .sc-inline-label{min-width:90px}
   .acc-manage-row{flex-wrap:wrap}
+  /* iOS Safari 聚焦时字号 <16px 会自动放大页面，移动端统一抬到 16px */
+  input[type=text],input[type=number],input[type=date],input[type=email],input[type=password],input[type=search],select,.ai-textarea{font-size:16px}
 }
 @media(max-width:960px){.add-layout{grid-template-columns:1fr}.add-right{display:none}}
 @media(min-width:1200px){.sidebar{width:220px}.main{margin-left:220px}}
@@ -924,11 +928,11 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
                 <div class="cat-grid-label">选择分类</div>
                 <div class="cat-grid" id="catGrid"></div>
                 <div class="loan-field" id="loanField" style="display:none"><label class="form-label">借给谁？</label><input type="text" id="borrower" placeholder="请输入..."></div>
-                <div class="note-field" id="noteField" style="display:none"><label class="form-label">备注</label><input type="text" id="noteText" placeholder="可选，如餐厅名称、和谁一起..."></div>
-                <div class="form-grid">
-                  <div class="form-group" style="margin-bottom:0"><label class="form-label">账户</label><select id="wallet" onchange="updateAmtSym('wallet','amountSym')"></select></div>
-                  <div class="form-group" style="margin-bottom:0"><label class="form-label">日期</label><input type="date" id="txDate"></div>
-                </div>
+                <div class="note-field" id="noteField"><label class="form-label">备注</label><input type="text" id="noteText" placeholder="可选，如餐厅名称、和谁一起..."></div>
+                <label class="form-label">账户</label>
+                <div class="form-wcaps" id="walletCaps"></div>
+                <select id="wallet" onchange="updateAmtSym('wallet','amountSym')" hidden></select>
+                <div class="form-group"><label class="form-label">日期</label><input type="date" id="txDate"></div>
                 <button class="cta expense" id="ctaBtn" onclick="addRecord()">记录支出</button>
                 <button class="add-more-btn" id="addMoreBtn" onclick="addExtraRow(0)">＋ 再记一笔</button>
               </div>
@@ -1393,6 +1397,17 @@ function renderWalletCaps(container,selectedId,onclickFn,sm){
   container.innerHTML=getAccounts().map(a=>`<span class="wcap${a.id===selectedId?' active':''}" data-w="${a.id}" onclick="${onclickFn}('${a.id}')">${accIconSm(a)} ${a.name}</span>`).join('');
 }
 
+/* ===== 记一笔表单：账户胶囊（隐藏的 #wallet select 仍是数据源） ===== */
+function renderFormWalletCaps(){
+  const sel=document.getElementById('wallet');
+  renderWalletCaps(document.getElementById('walletCaps'),sel?.value,'selectFormWallet');
+}
+function selectFormWallet(id){
+  const sel=document.getElementById('wallet');
+  if(sel){sel.value=id;updateAmtSym('wallet','amountSym')}
+  renderFormWalletCaps();
+}
+
 /* ===== 余额不足自动扣同币种银行卡 ===== */
 function deductExpense(walletId,amt){
   const acc=getAccount(walletId);
@@ -1420,6 +1435,7 @@ function updateAmtSym(selectId,symId){
 /* ===== 刷新所有账户相关 UI ===== */
 function refreshAllUI(){
   fillSelect(document.getElementById('wallet'));
+  renderFormWalletCaps();
   fillSelect(document.getElementById('moveFrom'));
   fillSelect(document.getElementById('moveTo'));
   fillSelect(document.getElementById('editWallet'));
@@ -1582,7 +1598,7 @@ function setType(t){curType=t;['expense','income','move'].forEach(x=>{const b=do
 /* ===== 分类网格 ===== */
 function catBtnStyle(m,active){return active?'border-color:'+m.color+';background:'+m.bg+';box-shadow:0 0 0 2px '+m.color+'40':''}
 function catIconStyle(m,active){return active?'background:'+m.color+'22;color:'+m.color:'background:'+m.bg+';color:'+m.color}
-function renderCatGrid(){const cats=CATS[curType]||[];const el=document.getElementById('catGrid');if(!el)return;el.innerHTML=cats.map(cat=>{const m=getCatMeta(cat);const active=selectedCat===cat;return`<button class="cat-item${active?' selected':''}" onclick="selectCat('${cat}')" style="${catBtnStyle(m,active)}"><div class="cat-icon-circle" style="${catIconStyle(m,active)}">${catSvg(cat)}</div><span class="cat-name">${cat}</span></button>`}).join('');document.getElementById('loanField').style.display=(curType==='expense'&&selectedCat==='资金流转')?'block':'none';document.getElementById('noteField').style.display=selectedCat?'block':'none'}
+function renderCatGrid(){const cats=CATS[curType]||[];const el=document.getElementById('catGrid');if(!el)return;el.innerHTML=cats.map(cat=>{const m=getCatMeta(cat);const active=selectedCat===cat;return`<button class="cat-item${active?' selected':''}" onclick="selectCat('${cat}')" style="${catBtnStyle(m,active)}"><div class="cat-icon-circle" style="${catIconStyle(m,active)}">${catSvg(cat)}</div><span class="cat-name">${cat}</span></button>`}).join('');document.getElementById('loanField').style.display=(curType==='expense'&&selectedCat==='资金流转')?'block':'none'}
 function selectCat(cat){selectedCat=cat;renderCatGrid()}
 function renderEditCatGrid(){const cats=CATS[editType]||[];const el=document.getElementById('editCatGrid');if(!el)return;el.innerHTML=cats.map(cat=>{const m=getCatMeta(cat);const active=editSelectedCat===cat;return`<button class="cat-item${active?' selected':''}" onclick="selectEditCat('${cat}')" style="${catBtnStyle(m,active)}"><div class="cat-icon-circle" style="${catIconStyle(m,active)}">${catSvg(cat)}</div><span class="cat-name">${cat}</span></button>`}).join('');document.getElementById('editLoanField').style.display=(editType==='expense'&&editSelectedCat==='资金流转')?'block':'none';document.getElementById('editNoteFieldWrap').style.display=editSelectedCat?'block':'none'}
 function selectEditCat(cat){editSelectedCat=cat;renderEditCatGrid()}
@@ -2365,7 +2381,7 @@ function prefillFormFromAI(r){
   const borrowerEl=document.getElementById('borrower');
   if(borrowerEl)borrowerEl.value=r.borrower||'';
   const walletEl=document.getElementById('wallet');
-  if(walletEl){walletEl.value=getAccount(r.wallet)?r.wallet:(getAccounts()[0]?.id||'wx');updateAmtSym('wallet','amountSym')}
+  if(walletEl){walletEl.value=getAccount(r.wallet)?r.wallet:(getAccounts()[0]?.id||'wx');updateAmtSym('wallet','amountSym');renderFormWalletCaps()}
   const dateEl=document.getElementById('txDate');
   if(dateEl)dateEl.value=r.date||localDateStr();
   document.getElementById('normalForm')?.scrollIntoView({behavior:'smooth',block:'center'});
