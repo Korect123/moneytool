@@ -285,6 +285,27 @@ input[type=number],input[type=text],input[type=date],input[type=email],input[typ
 .cd-month-btn:disabled{opacity:.3;cursor:default}
 .cd-month-label{font-size:13px;font-weight:600;color:var(--ink);min-width:120px;text-align:center}
 .cd-month-sum{font-size:11px;color:var(--ink3);font-weight:400;display:block;margin-top:1px}
+.cd-days{position:relative;display:flex;gap:5px;overflow-x:auto;padding:2px 1px 8px;margin-bottom:8px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;overscroll-behavior-x:contain}
+.cd-days::-webkit-scrollbar{height:5px}
+.cd-days::-webkit-scrollbar-thumb{background:var(--border2);border-radius:999px}
+.cd-days:hover::-webkit-scrollbar-thumb{background:var(--gold)}
+.cd-day{flex-shrink:0;width:40px;padding:5px 0 6px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);cursor:pointer;font-family:var(--font);display:flex;flex-direction:column;align-items:center;gap:1px;color:var(--ink2);transition:all .12s;position:relative}
+.cd-day.all{width:auto;padding:5px 11px;justify-content:center;font-size:12px}
+.cd-day-wk{font-size:9px;color:var(--ink3)}
+.cd-day-n{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.cd-day-dot{width:4px;height:4px;border-radius:50%;background:transparent}
+.cd-day.has .cd-day-dot{background:var(--gold)}
+.cd-day.today{border-color:var(--gold)}
+.cd-day:hover:not(:disabled){border-color:var(--gold)}
+.cd-day.active{background:var(--gold);border-color:var(--gold);color:#fff}
+.cd-day.active .cd-day-wk{color:rgba(255,255,255,.8)}
+.cd-day.active .cd-day-dot{background:#fff}
+.cd-day:disabled{opacity:.35;cursor:default}
+.cd-dayhead{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink2);background:var(--gold-bg);border-radius:var(--r-sm);padding:7px 10px;margin-bottom:6px}
+.cd-dayhead b{font-variant-numeric:tabular-nums;color:var(--ink);white-space:nowrap}
+.cd-dayhead-sub{font-size:11px;color:var(--ink3);margin-top:2px}
+.cd-dayhead-r{text-align:right;flex-shrink:0;margin-left:10px}
+.cd-ract{display:flex;flex-direction:column;gap:2px;flex-shrink:0;margin-left:-4px}
 .cd-list{display:flex;flex-direction:column;max-height:32vh;overflow-y:auto;margin-bottom:4px}
 .cd-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border)}
 .cd-row:last-child{border-bottom:none}
@@ -1171,6 +1192,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
     <div class="modal-body">
       <div class="cd-head" id="cdHead"></div>
       <div class="cd-month" id="cdMonth"></div>
+      <div class="cd-days" id="cdDays"></div>
       <div class="cd-list" id="cdList"></div>
       <div class="cd-addbox">
         <div class="cd-addtitle">✎ 对照发现遗漏？在这补记一笔</div>
@@ -2014,13 +2036,13 @@ function deleteRecord(id){
   applyDeleteBalance(r,1);
   data.records.splice(idx,1);
   if(r.repayOf)syncLoanStatus(r.repayOf);
-  debouncedSync();renderOverview();renderRecords();renderAddPage();
+  debouncedSync();renderOverview();renderRecords();renderAddPage();refreshCardDetail();
   showUndoToast('已删除，余额已还原',()=>{
     applyDeleteBalance(r,-1);
     const at=Math.min(idx,data.records.length);
     data.records.splice(at,0,r);
     if(r.repayOf)syncLoanStatus(r.repayOf);
-    debouncedSync();renderOverview();renderRecords();renderAddPage();showToast('已恢复');
+    debouncedSync();renderOverview();renderRecords();renderAddPage();refreshCardDetail();showToast('已恢复');
   });
 }
 /* ===== 借出还款（支持分次） =====
@@ -2058,7 +2080,7 @@ function saveEdit(){const r=data.records.find(x=>x.id===editingId);if(!r)return;
   redirected=res.redirected;
 }else{
   data.balances[newWallet]=(data.balances[newWallet]||0)+newAmt;
-}const isLoan=editType==='expense'&&editSelectedCat==='资金流转'&&newBorrower!=='';Object.assign(r,{type:editType,amt:newAmt,desc:editSelectedCat,wallet:actualWallet,date:newDate,...(newNote?{note:newNote}:{note:undefined}),...(redirected?{redirected:true}:{redirected:undefined}),...(isLoan?{loan:true,borrower:newBorrower,loanStatus:'pending'}:{loan:undefined,borrower:undefined,loanStatus:undefined})});Object.keys(r).forEach(k=>r[k]===undefined&&delete r[k]);if(r.repayOf)syncLoanStatus(r.repayOf);if(r.loan&&data.records.some(x=>x.repayOf===r.id))syncLoanStatus(r.id);debouncedSync();closeEditModal();renderOverview();renderRecords();renderAddPage();showToast('✓ 已保存修改')}
+}const isLoan=editType==='expense'&&editSelectedCat==='资金流转'&&newBorrower!=='';Object.assign(r,{type:editType,amt:newAmt,desc:editSelectedCat,wallet:actualWallet,date:newDate,...(newNote?{note:newNote}:{note:undefined}),...(redirected?{redirected:true}:{redirected:undefined}),...(isLoan?{loan:true,borrower:newBorrower,loanStatus:'pending'}:{loan:undefined,borrower:undefined,loanStatus:undefined})});Object.keys(r).forEach(k=>r[k]===undefined&&delete r[k]);if(r.repayOf)syncLoanStatus(r.repayOf);if(r.loan&&data.records.some(x=>x.repayOf===r.id))syncLoanStatus(r.id);debouncedSync();closeEditModal();renderOverview();renderRecords();renderAddPage();refreshCardDetail();showToast('✓ 已保存修改')}
 function closeEditModal(e){if(!e||e.target===document.getElementById('editModal')){const m=document.querySelector('#editModal .modal');if(m)m.style.viewTransitionName='';document.getElementById('editModal').style.display='none'}}
 /* ===== 内嵌计算器 ===== */
 let calcTarget='',calcExprStr='';
@@ -2079,11 +2101,25 @@ function calcKey(k){
 }
 document.addEventListener('keydown',e=>{if(document.getElementById('calcModal')?.style.display!=='flex')return;const k=e.key;if(/[0-9]/.test(k))calcKey(k);else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='.'||k===','||k==='。'||k==='．'||k==='，'||k==='Decimal'||e.code==='NumpadDecimal')calcKey('.');else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')closeCalc()});
 /* ===== 账户明细弹窗 + 补记 ===== */
-let cardWallet='',cardYM='',qaType='expense',qaCat='';
-function openCardDetail(walletId){cardWallet=walletId;cardYM=localYM();qaType='expense';qaCat='';const acc=getAccount(walletId);if(!acc)return;document.getElementById('qaAmt').value='';document.getElementById('qaNote').value='';document.getElementById('qaDate').value=localDateStr();document.getElementById('qaAmtSym').textContent=curSym(acc.currency);setQaType('expense');renderCardDetail();const _cm=document.getElementById('cardModal');_cm.style.display='flex';_cm.querySelector('.modal').style.viewTransitionName='morph-target'}
+let cardWallet='',cardYM='',cardDay='',qaType='expense',qaCat='';
+function openCardDetail(walletId){cardWallet=walletId;cardYM=localYM();cardDay='';qaType='expense';qaCat='';const acc=getAccount(walletId);if(!acc)return;document.getElementById('qaAmt').value='';document.getElementById('qaNote').value='';document.getElementById('qaDate').value=localDateStr();document.getElementById('qaAmtSym').textContent=curSym(acc.currency);setQaType('expense');renderCardDetail();const _cm=document.getElementById('cardModal');_cm.style.display='flex';_cm.querySelector('.modal').style.viewTransitionName='morph-target';scrollCardDaysHome()}
 function closeCardDetail(e){if(!e||e.target===document.getElementById('cardModal')){const m=document.querySelector('#cardModal .modal');if(m)m.style.viewTransitionName='';document.getElementById('cardModal').style.display='none'}}
 function cardWalletRecords(ym){return data.records.filter(r=>r.date&&r.date.startsWith(ym)&&(r.wallet===cardWallet||r.fromWallet===cardWallet||r.toWallet===cardWallet))}
-function changeCardMonth(delta){const parts=cardYM.split('-');const d=new Date(Number(parts[0]),Number(parts[1])-1+delta,1);cardYM=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');renderCardDetail()}
+function changeCardMonth(delta){const parts=cardYM.split('-');const d=new Date(Number(parts[0]),Number(parts[1])-1+delta,1);cardYM=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');cardDay='';renderCardDetail();scrollCardDaysHome()}
+function scrollCardDaysHome(){const dd=document.getElementById('cdDays');if(!dd)return;const t=dd.querySelector('.cd-day.today');dd.scrollLeft=t?t.offsetLeft-dd.clientWidth/2+t.offsetWidth/2:0}
+/* 按天查看：再点一次同一天 = 回到整月；选中某天时补记日期自动跟到那天 */
+function selectCardDay(ds){cardDay=(ds&&ds!==cardDay)?ds:'';if(cardDay)document.getElementById('qaDate').value=cardDay;renderCardDetail()}
+function refreshCardDetail(){const m=document.getElementById('cardModal');if(m&&m.style.display!=='none')renderCardDetail()}
+function renderCardDays(monthRecs,acc){
+  const el=document.getElementById('cdDays');if(!el)return;
+  const [y,mo]=cardYM.split('-').map(Number);const n=new Date(y,mo,0).getDate();const today=localDateStr();const wk=['日','一','二','三','四','五','六'];
+  const has=new Set(monthRecs.map(r=>r.date));
+  let h=`<button class="cd-day all${cardDay?'':' active'}" onclick="selectCardDay('')">整月</button>`;
+  for(let d=1;d<=n;d++){const ds=cardYM+'-'+String(d).padStart(2,'0');const future=ds>today;h+=`<button class="cd-day${has.has(ds)?' has':''}${ds===today?' today':''}${ds===cardDay?' active':''}" data-day="${ds}" onclick="selectCardDay('${ds}')" ${future?'disabled':''}><span class="cd-day-wk">${ds===today?'今天':'周'+wk[new Date(y,mo-1,d).getDay()]}</span><span class="cd-day-n">${d}</span><span class="cd-day-dot"></span></button>`}
+  const keep=el.scrollLeft;el.innerHTML=h;el.scrollLeft=keep;
+  const act=cardDay&&el.querySelector(`[data-day="${cardDay}"]`);
+  if(act&&(act.offsetLeft<el.scrollLeft||act.offsetLeft+act.offsetWidth>el.scrollLeft+el.clientWidth))el.scrollLeft=act.offsetLeft-el.clientWidth/2+act.offsetWidth/2;
+}
 function renderCardDetail(){
   const acc=getAccount(cardWallet);if(!acc)return;
   const bal=data.balances[cardWallet]||0;
@@ -2091,11 +2127,20 @@ function renderCardDetail(){
   setAnimatedNum(document.querySelector('#cdHead .cd-bal-val'),'cardbal-'+cardWallet,bal,x=>fmtCur(acc.currency,x));
   // 计算每笔交易"扣款/入账后"的余额：以当前余额为基准，按时间倒序逐笔回退
   const balAfter=walletBalanceAfterMap(cardWallet,bal);
-  const recs=cardWalletRecords(cardYM).slice().sort((a,b)=>((b.date||'').localeCompare(a.date||''))||(b.id-a.id));
-  const spent=recs.filter(r=>r.type==='expense'&&r.wallet===cardWallet).reduce((sm,r)=>sm+r.amt,0);
+  const monthRecs=cardWalletRecords(cardYM).slice().sort((a,b)=>((b.date||'').localeCompare(a.date||''))||(b.id-a.id));
+  if(cardDay&&!cardDay.startsWith(cardYM))cardDay='';
+  const recs=cardDay?monthRecs.filter(r=>r.date===cardDay):monthRecs;
+  const spent=monthRecs.filter(r=>r.type==='expense'&&r.wallet===cardWallet).reduce((sm,r)=>sm+r.amt,0);
   const parts=cardYM.split('-');const curYM=localYM();
-  document.getElementById('cdMonth').innerHTML=`<button class="cd-month-btn" onclick="changeCardMonth(-1)">‹</button><div class="cd-month-label">${parts[0]}年${parseInt(parts[1])}月<span class="cd-month-sum">${recs.length} 笔 · 支出 ${fmtCur(acc.currency,spent)}</span></div><button class="cd-month-btn" onclick="changeCardMonth(1)" ${cardYM>=curYM?'disabled':''}>›</button>`;
-  document.getElementById('cdList').innerHTML=recs.length?recs.map(r=>cardRowHTML(r,acc,balAfter)).join(''):'<div class="cd-empty">本月该账户暂无记录</div>';
+  document.getElementById('cdMonth').innerHTML=`<button class="cd-month-btn" onclick="changeCardMonth(-1)">‹</button><div class="cd-month-label">${parts[0]}年${parseInt(parts[1])}月<span class="cd-month-sum">${monthRecs.length} 笔 · 支出 ${fmtCur(acc.currency,spent)}</span></div><button class="cd-month-btn" onclick="changeCardMonth(1)" ${cardYM>=curYM?'disabled':''}>›</button>`;
+  renderCardDays(monthRecs,acc);
+  let dayHead='';
+  if(cardDay){
+    const dayOut=recs.reduce((sm,r)=>{const e=walletEffect(r,cardWallet);return e<0?sm-e:sm},0),dayIn=recs.reduce((sm,r)=>{const e=walletEffect(r,cardWallet);return e>0?sm+e:sm},0);
+    const flow=[dayOut?`出 <b>${fmtCur(acc.currency,dayOut)}</b>`:'',dayIn?`入 <b>${fmtCur(acc.currency,dayIn)}</b>`:''].filter(Boolean).join(' · ');
+    dayHead=`<div class="cd-dayhead"><div><div>${fmtDateFull(cardDay)} · ${recs.length} 笔</div>${flow?`<div class="cd-dayhead-sub">${flow}</div>`:''}</div>${recs.length&&balAfter[recs[0].id]!=null?`<div class="cd-dayhead-r"><div class="cd-dayhead-sub" style="margin-top:0">日终余额</div><b>${fmtCur(acc.currency,balAfter[recs[0].id])}</b></div>`:''}</div>`;
+  }
+  document.getElementById('cdList').innerHTML=dayHead+(recs.length?recs.map(r=>cardRowHTML(r,acc,balAfter)).join(''):`<div class="cd-empty">${cardDay?'这天该账户没有记录，可在下方直接补记':'本月该账户暂无记录'}</div>`);
   renderQaCats();
 }
 // 该笔记录对指定钱包余额的影响（正=入账，负=扣款）
@@ -2119,11 +2164,11 @@ function cardRowHTML(r,acc,balAfter){
   if(isTransfer){const fa=getAccount(r.fromWallet),ta=getAccount(r.toWallet);const out=r.fromWallet===cardWallet;desc=`${fa?fa.name:'?'}→${ta?ta.name:'?'}`;sub='挪钱 · '+fmtDate(r.date);sign=out?'-':'+';cls='transfer'}
   else{desc=r.desc||'未备注';sub=(r.note?esc(r.note)+' · ':'')+fmtDate(r.date);sign=r.type==='income'?'+':'-';cls=r.type}
   const balHtml=(balAfter&&balAfter[r.id]!=null)?`<div class="cd-rbal">余 ${fmtCur(acc.currency,balAfter[r.id])}</div>`:'';
-  return`<div class="cd-row${justAddedIds.has(r.id)?' just-added':''}"><div class="cd-ico" style="background:${m.bg};color:${m.color}">${catSvg(cat)}</div><div class="cd-rinfo"><div class="cd-rdesc">${esc(desc)}</div><div class="cd-rsub">${sub}</div></div><div class="cd-ramt-wrap"><div class="cd-ramt ${cls}">${sign}${fmtCur(acc.currency,r.amt)}</div>${balHtml}</div></div>`;
+  return`<div class="cd-row${justAddedIds.has(r.id)?' just-added':''}"><div class="cd-ico" style="background:${m.bg};color:${m.color}">${catSvg(cat)}</div><div class="cd-rinfo"><div class="cd-rdesc">${esc(desc)}</div><div class="cd-rsub">${sub}</div></div><div class="cd-ramt-wrap"><div class="cd-ramt ${cls}">${sign}${fmtCur(acc.currency,r.amt)}</div>${balHtml}</div><div class="cd-ract">${(!isTransfer&&!r.loan)?`<button class="r-action-btn" data-edit="${r.id}" aria-label="编辑">✎</button>`:''}<button class="r-action-btn del" data-del="${r.id}" aria-label="删除">✕</button></div></div>`;
 }
 function setQaType(t){qaType=t;qaCat='';document.getElementById('qaBtnExp').className='edit-type-btn'+(t==='expense'?' exp-active':'');document.getElementById('qaBtnInc').className='edit-type-btn'+(t==='income'?' inc-active':'');renderQaCats()}
 /* 横向胶囊行：鼠标竖向滚轮 → 横向滚动（滚到头时放行，让外层弹窗继续滚） */
-document.addEventListener('wheel',function(e){const el=e.target.closest&&e.target.closest('.qa-cats');if(!el||el.scrollWidth<=el.clientWidth)return;const d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?0:e.deltaY;if(!d)return;const max=el.scrollWidth-el.clientWidth;if((d<0&&el.scrollLeft<=0)||(d>0&&el.scrollLeft>=max-1))return;e.preventDefault();el.scrollLeft+=d*(e.deltaMode===1?16:1)},{passive:false});
+document.addEventListener('wheel',function(e){const el=e.target.closest&&e.target.closest('.qa-cats,.cd-days');if(!el||el.scrollWidth<=el.clientWidth)return;const d=Math.abs(e.deltaX)>Math.abs(e.deltaY)?0:e.deltaY;if(!d)return;const max=el.scrollWidth-el.clientWidth;if((d<0&&el.scrollLeft<=0)||(d>0&&el.scrollLeft>=max-1))return;e.preventDefault();el.scrollLeft+=d*(e.deltaMode===1?16:1)},{passive:false});
 function renderQaCats(){const cats=CATS[qaType]||[];const el=document.getElementById('qaCats');if(!el)return;el.innerHTML=cats.map(c=>`<button class="qa-chip${qaCat===c?' active':''}" onclick="selectQaCat('${c}')">${catSvg(c)}<span>${c}</span></button>`).join('')}
 function selectQaCat(c){qaCat=c;renderQaCats()}
 function quickAddRecord(){
@@ -2509,7 +2554,7 @@ function recordHTML(r){
   const accIcon=acc?`<span class="w-icon sm" style="background:${acc.color};color:#fff">${esc(acc.abbr)}</span>`:'';
   const hint=isTransfer?'':cnyHint(recCur(r),r.amt,r.fx);
   const hintHtml=hint?`<span class="r-cny">${hint}</span>`:'';
-  return`<div class="record-item${justAddedIds.has(r.id)?' just-added':''}"><div class="r-cat-icon" style="background:${m.bg};color:${m.color}">${catSvg(isTransfer?'资金流转':(r.desc||'未备注'))}</div><div class="r-body"><div class="r-title">${esc(mainDesc)}${loanTag}</div><div class="r-sub">${subLine}${r.redirected?'<span class="r-redirect">自动扣银行卡</span>':''}</div>${noteText?`<div class="r-note">${esc(noteText)}</div>`:''}</div><div class="r-right"><span class="r-amt ${amtClass}">${sign}${fmtAmt(r.wallet,r.amt)}</span>${hintHtml}<div class="r-actions">${editBtn}<button class="r-action-btn del" data-del="${r.id}">✕</button>${r.loan&&r.loanStatus==='pending'?`<button class="repaid-btn" data-repaid="${r.id}">已还清</button>`:''}</div></div></div>`}
+  return`<div class="record-item${justAddedIds.has(r.id)?' just-added':''}"><div class="r-cat-icon" style="background:${m.bg};color:${m.color}">${catSvg(isTransfer?'资金流转':(r.desc||'未备注'))}</div><div class="r-body"><div class="r-title">${esc(mainDesc)}${loanTag}</div><div class="r-sub">${subLine}${r.redirected?'<span class="r-redirect">自动扣银行卡</span>':''}</div>${noteText?`<div class="r-note">${esc(noteText)}</div>`:''}</div><div class="r-right"><span class="r-amt ${amtClass}">${sign}${fmtAmt(r.wallet,r.amt)}</span>${hintHtml}<div class="r-actions">${editBtn}<button class="r-action-btn del" data-del="${r.id}">✕</button>${r.loan&&r.loanStatus==='pending'?`<button class="repaid-btn" data-repaid="${r.id}">还款</button>`:''}</div></div></div>`}
 
 /* ===== 总览 ===== */
 function renderTrendChart(mo){
