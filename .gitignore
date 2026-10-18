@@ -1,0 +1,9 @@
+# Impeccable 本地开发产物（选方向草图、截图、问答记录、缓存）
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/questions/
+.impeccable/live/annotations/
+.impeccable/live/sessions/
+.impeccable/hook.cache.json
+.impeccable/config.local.json
+.claude/worktrees/

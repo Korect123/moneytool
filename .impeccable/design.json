@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T22:00:00+08:00",
+  "title": "Design System: 账本 · Ledger",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "系统强调蓝", "cssVar": "--gold / --gold-bright", "canonical": "#0a66d6", "tonalRamp": ["#04213f", "#06346a", "#084b98", "#0a66d6", "#3d86e3", "#78aaed", "#b4d0f6", "#e6f0fc"] },
+      "accent-text": { "role": "primary", "displayName": "强调蓝文字", "cssVar": "--gold-t", "canonical": "#0959c0" },
+      "accent-tint": { "role": "primary", "displayName": "强调淡底", "cssVar": "--gold-bg / --gold-a08" },
+      "accent-ring": { "role": "primary", "displayName": "焦点环", "cssVar": "--gold-a15" },
+      "income": { "role": "secondary", "displayName": "收入绿", "cssVar": "--green", "canonical": "#1f7a35", "tonalRamp": ["#0a2a12", "#123f1d", "#185b29", "#1f7a35", "#3f9a54", "#78bd87", "#b5dcbd", "#e7f4ea"] },
+      "transfer": { "role": "tertiary", "displayName": "转账靛蓝", "cssVar": "--blue-t (legacy name; not the accent)", "canonical": "#4846c4", "tonalRamp": ["#17164a", "#232270", "#33319a", "#4846c4", "#6e6cd6", "#9d9ce4", "#cbcaf1", "#eeeefb"] },
+      "destructive": { "role": "status", "displayName": "危险红", "cssVar": "--red", "canonical": "#d70015", "tonalRamp": ["#3d0006", "#66000a", "#9a0010", "#d70015", "#e63e4c", "#ef7e87", "#f7bcc1", "#fdebed"] },
+      "warning": { "role": "status", "displayName": "警示橙", "cssVar": "--amber", "canonical": "#b25000", "tonalRamp": ["#331700", "#5a2800", "#863c00", "#b25000", "#cc7633", "#dea173", "#efcfb5", "#fbefe6"] },
+      "label": { "role": "neutral", "displayName": "正文墨（同时是支出色 --exp）", "cssVar": "--ink", "canonical": "#1c1c1e", "tonalRamp": ["#1c1c1e", "#3a3a3c", "#636366", "#8e8e93", "#aeaeb2", "#c7c7cc", "#e5e5ea", "#f2f2f7"] },
+      "label-secondary": { "role": "neutral", "displayName": "次级灰", "cssVar": "--ink2" },
+      "label-tertiary": { "role": "neutral", "displayName": "三级灰", "cssVar": "--ink3" },
+      "grouped-ground": { "role": "neutral", "displayName": "分组底", "cssVar": "--paper" },
+      "surface": { "role": "neutral", "displayName": "表面白", "cssVar": "--surface" },
+      "fill": { "role": "neutral", "displayName": "填充灰（不是卡片背景）", "cssVar": "--card" },
+      "sidebar": { "role": "neutral", "displayName": "侧边栏灰", "cssVar": "--sidebar-bg" },
+      "separator": { "role": "neutral", "displayName": "发丝分隔线", "cssVar": "--border" },
+      "separator-strong": { "role": "neutral", "displayName": "强分隔线", "cssVar": "--border2" },
+      "selection": { "role": "neutral", "displayName": "选中 / hover 灰", "cssVar": "--sel" },
+      "dark-accent-text": { "role": "primary", "displayName": "强调蓝文字（深色）", "cssVar": "--gold-t (dark)" },
+      "dark-income": { "role": "secondary", "displayName": "收入绿（深色）", "cssVar": "--green (dark)" },
+      "dark-grouped-ground": { "role": "neutral", "displayName": "分组底（深色）", "cssVar": "--paper (dark)" },
+      "dark-surface": { "role": "neutral", "displayName": "表面（深色）", "cssVar": "--surface (dark)" },
+      "dark-fill": { "role": "neutral", "displayName": "填充（深色）", "cssVar": "--card (dark)" }
+    },
+    "namingHazards": [
+      "--gold, --gold-bright = accent blue #0a66d6; --gold-t = accent text (#0959c0 light, #64a8ff dark); --gold-bg/--gold-a08/--gold-a10/--gold-a15 = blue tints and focus ring.",
+      "--green = income; --exp = expense = var(--ink).",
+      "--blue/--blue-t = indigo used for transfer amounts, not the accent.",
+      "--card = control fill (inputs, chips, segmented track), not the card background; cards use --surface; page ground is --paper.",
+      "--hero-a/--hero-b are both flat surface now; no gradient."
+    ],
+    "legacyPalettes": [
+      { "name": "CAT_CHART_LIGHT / CAT_CHART_DARK", "location": "index.html <script>", "status": "existing, intentionally untouched this round; not part of this world's intent" },
+      { "name": "CATS[].color / CATS[].emoji", "location": "index.html <script>", "status": "legacy category data; rendered icons are forced neutral by the override block" }
+    ],
+    "typographyMeta": {
+      "large-title": { "displayName": "Large Title", "purpose": "页面大标题（今天 / 总览…），移动端 26px。" },
+      "amount-entry": { "displayName": "Amount Entry", "purpose": "记一笔卡片的金额输入，前置 26px/500 币种符号。" },
+      "total": { "displayName": "Total", "purpose": "总资产卡合计。" },
+      "stat": { "displayName": "Stat", "purpose": "页头今日支出 / 收入，移动端 19px。" },
+      "headline": { "displayName": "Headline", "purpose": "弹窗标题；设置卡片标题用 15px。" },
+      "title": { "displayName": "Title", "purpose": "卡片 / 面板标题。" },
+      "body": { "displayName": "Body", "purpose": "正文与列表行主文字（行内标题用 500）。" },
+      "row-amount": { "displayName": "Row Amount", "purpose": "记录行金额。" },
+      "label": { "displayName": "Label", "purpose": "表单字段标签；分组标题为 13px/600/三级灰。" },
+      "caption": { "displayName": "Caption", "purpose": "副信息、币种、计数、折算金额。" }
+    },
+    "shadows": [
+      { "name": "card-hairline", "value": "0 1px 2px rgba(0,0,0,.04)", "dark": "none", "purpose": "所有卡片与分组列表（--sh）。" },
+      { "name": "segment-thumb", "value": "0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04)", "purpose": "分段控件选中滑块。" },
+      { "name": "modal", "value": "0 20px 50px rgba(0,0,0,.18), 0 0 0 .5px rgba(0,0,0,.08)", "purpose": "弹窗与移动端底部抽屉。" },
+      { "name": "toast", "value": "0 8px 24px rgba(0,0,0,.18)", "purpose": "提示条。" },
+      { "name": "auth-card", "value": "0 1px 3px rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.06)", "purpose": "登录卡片。" },
+      { "name": "sticky-cta-lift", "value": "0 6px 16px rgba(10,102,214,.25)", "purpose": "≤768px 吸附在底栏上方的主按钮。" },
+      { "name": "focus-ring", "value": "0 0 0 3px var(--gold-a15)", "purpose": "输入框 / 金额框聚焦；键盘焦点另用 outline 2px solid var(--gold-t), offset 2px。" }
+    ],
+    "motion": [
+      { "name": "record-in", "value": "recordIn .28s ease (opacity 0, translateY(-6px) → rest)", "purpose": "新记录行出现。" },
+      { "name": "row-flash", "value": "rowFlash 1.6s ease (accent-tint → transparent)", "purpose": "新记录行闪烁一次。" },
+      { "name": "modal-in", "value": ".22s cubic-bezier(.2,.8,.3,1)", "purpose": "弹窗进入。" },
+      { "name": "toast-check", "value": "stroke draw .4s ease-out .08s", "purpose": "成功提示的对勾。" },
+      { "name": "state", "value": ".12s–.2s", "purpose": "hover、聚焦、行操作显隐。" },
+      { "name": "reduced-motion", "value": "all animation/transition → .01ms", "purpose": "prefers-reduced-motion 全局静态退路。" }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "max-width: 768px", "purpose": "底部标签栏、单列、吸附主按钮、底部抽屉弹窗、输入 16px。" },
+      { "name": "single-column", "value": "max-width: 960px", "purpose": "今日页右栏落到主列下方。" },
+      { "name": "wide-sidebar", "value": "min-width: 1200px", "purpose": "侧边栏 220px。" },
+      { "name": "wide-rail", "value": "min-width: 1280px", "purpose": "今日页右栏 360px。" }
+    ],
+    "layout": {
+      "sidebarWidth": "200px (220px ≥1200px)",
+      "mainHeaderPadding": "30px 32px 0",
+      "mainBodyPadding": "20px 32px 56px",
+      "todayGrid": "minmax(0,1fr) 320px / 360px, gap 24px"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "每个区域唯一的实心主操作（记录支出、保存）。",
+      "html": "<button class=\"ds-btn-primary\">记录支出</button>",
+      "css": ".ds-btn-primary { background: var(--gold, #0a66d6); color: #fff; border: none; border-radius: 10px; min-height: 40px; padding: 0 28px; font: 600 15px -apple-system, BlinkMacSystemFont, 'PingFang SC', system-ui, sans-serif; cursor: pointer; transition: opacity .15s; } .ds-btn-primary:hover { opacity: .9; } .ds-btn-primary:focus-visible { outline: 2px solid var(--gold-t, #0959c0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Plain Button",
+      "kind": "button",
+      "refersTo": "button-plain",
+      "description": "次要操作：蓝字无底，hover 出现淡蓝底。",
+      "html": "<button class=\"ds-btn-plain\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 14 14\" aria-hidden=\"true\"><path d=\"M7 2v10M2 7h10\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\"/></svg> 批量添加</button>",
+      "css": ".ds-btn-plain { display: inline-flex; align-items: center; gap: 4px; background: transparent; color: var(--gold-t, #0959c0); border: none; border-radius: 10px; min-height: 40px; padding: 0 12px; font: 500 14px -apple-system, 'PingFang SC', system-ui, sans-serif; cursor: pointer; } .ds-btn-plain:hover { background: var(--gold-bg, rgba(10,102,214,.08)); } .ds-btn-plain:focus-visible { outline: 2px solid var(--gold-t, #0959c0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Small Buttons",
+      "kind": "button",
+      "refersTo": "button-small-neutral",
+      "description": "设置页内联按钮：主要 / 中性 / 危险三种。",
+      "html": "<div class=\"ds-row\"><button class=\"ds-sbtn ds-sbtn-primary\">保存余额</button><button class=\"ds-sbtn ds-sbtn-neutral\">导出</button><button class=\"ds-sbtn ds-sbtn-danger\">清空</button></div>",
+      "css": ".ds-row { display: flex; gap: 8px; } .ds-sbtn { min-height: 32px; padding: 6px 14px; border: none; border-radius: 8px; font: 600 13px -apple-system, 'PingFang SC', system-ui, sans-serif; cursor: pointer; } .ds-sbtn-primary { background: var(--gold, #0a66d6); color: #fff; } .ds-sbtn-neutral { background: var(--card, #efeff2); color: var(--ink, #1c1c1e); } .ds-sbtn-danger { background: var(--red-bg, rgba(215,0,21,.08)); color: var(--red-t, #c4001a); } .ds-sbtn:hover { opacity: .9; } .ds-sbtn:focus-visible { outline: 2px solid var(--gold-t, #0959c0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented-control",
+      "description": "支出 / 收入 / 挪钱；选中段为白色滑块，三种类型选中态相同。",
+      "html": "<div class=\"ds-seg\" role=\"tablist\"><button class=\"ds-seg-btn is-active\">支出</button><button class=\"ds-seg-btn\">收入</button><button class=\"ds-seg-btn\">挪钱</button></div>",
+      "css": ".ds-seg { display: inline-grid; grid-auto-flow: column; background: var(--card, #efeff2); border-radius: 9px; padding: 2px; } .ds-seg-btn { min-height: 32px; padding: 6px 22px; border: none; background: transparent; border-radius: 7px; font: 400 13px -apple-system, 'PingFang SC', system-ui, sans-serif; color: var(--ink, #1c1c1e); cursor: pointer; } .ds-seg-btn.is-active { background: var(--surface, #fff); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); } .ds-seg-btn:focus-visible { outline: 2px solid var(--gold-t, #0959c0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "分类 / 账户胶囊；选中为淡蓝底 + 1px 蓝色内描边。",
+      "html": "<div class=\"ds-row\"><button class=\"ds-chip is-selected\">微信 <span class=\"ds-chip-cur\">¥</span></button><button class=\"ds-chip\">支付宝 <span class=\"ds-chip-cur\">¥</span></button><button class=\"ds-chip\">Commonwealth <span class=\"ds-chip-cur\">A$</span></button></div>",
+      "css": ".ds-row { display: flex; flex-wrap: wrap; gap: 8px; } .ds-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 14px; border: none; border-radius: 999px; background: var(--card, #efeff2); color: var(--ink, #1c1c1e); font: 500 14px -apple-system, 'PingFang SC', system-ui, sans-serif; cursor: pointer; } .ds-chip-cur { font-size: 12px; color: var(--ink3, #636366); } .ds-chip:hover { background: var(--sel, rgba(60,60,67,.10)); } .ds-chip.is-selected { background: var(--gold-bg, rgba(10,102,214,.08)); box-shadow: inset 0 0 0 1px var(--gold, #0a66d6); color: var(--gold-t, #0959c0); font-weight: 600; } .ds-chip.is-selected .ds-chip-cur { color: var(--gold-t, #0959c0); } .ds-chip:focus-visible { outline: 2px solid var(--gold-t, #0959c0); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "填充灰输入框，聚焦时变白并出现蓝边与淡蓝焦点环。",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"可选，如餐厅名称、和谁一起…\">",
+      "css": ".ds-input { width: 100%; min-height: 40px; padding: 9px 12px; border: 1px solid transparent; border-radius: 10px; background: var(--card, #efeff2); color: var(--ink, #1c1c1e); font: 400 14px -apple-system, 'PingFang SC', system-ui, sans-serif; caret-color: var(--gold-t, #0959c0); outline: none; transition: border-color .2s, box-shadow .2s, background .15s; } .ds-input:focus { border-color: var(--gold, #0a66d6); background: var(--surface, #fff); box-shadow: 0 0 0 3px var(--gold-a15, rgba(10,102,214,.18)); }"
+    },
+    {
+      "name": "Amount Field",
+      "kind": "input",
+      "refersTo": "amount-field",
+      "description": "记一笔的大号金额框：币种符号、输入、计算器按钮同一行。",
+      "html": "<label class=\"ds-amount\"><span class=\"ds-amount-sym\">¥</span><input placeholder=\"0.00\" inputmode=\"decimal\"><button class=\"ds-amount-calc\" aria-label=\"计算器\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><rect x=\"3\" y=\"2\" width=\"10\" height=\"12\" rx=\"2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.4\"/><path d=\"M5.5 5h5\" stroke=\"currentColor\" stroke-width=\"1.4\" stroke-linecap=\"round\"/></svg></button></label>",
+      "css": ".ds-amount { display: flex; align-items: center; gap: 4px; min-height: 64px; padding: 0 4px 0 18px; border: 1px solid transparent; border-radius: 10px; background: var(--card, #efeff2); transition: border-color .2s, box-shadow .2s, background .15s; } .ds-amount:focus-within { border-color: var(--gold, #0a66d6); background: var(--surface, #fff); box-shadow: 0 0 0 3px var(--gold-a15, rgba(10,102,214,.18)); } .ds-amount-sym { font: 500 26px -apple-system, 'PingFang SC', system-ui, sans-serif; color: var(--ink2, #3a3a3c); } .ds-amount input { flex: 1; min-width: 0; border: none; background: transparent; outline: none; padding: 9px 4px; font: 600 32px -apple-system, 'PingFang SC', system-ui, sans-serif; letter-spacing: -.6px; font-variant-numeric: tabular-nums; color: var(--ink, #1c1c1e); } .ds-amount-calc { width: 36px; height: 36px; border: none; border-radius: 8px; background: transparent; color: var(--ink3, #636366); cursor: pointer; } .ds-amount-calc:hover { background: var(--sel, rgba(60,60,67,.10)); color: var(--ink, #1c1c1e); }"
+    },
+    {
+      "name": "Grouped List",
+      "kind": "card",
+      "refersTo": "grouped-list",
+      "description": "内嵌分组列表：中性方形图标、缩进发丝线、等宽金额；收入绿、支出墨色。",
+      "html": "<div class=\"ds-list\"><div class=\"ds-row-item\" tabindex=\"0\"><span class=\"ds-ico\">退</span><span class=\"ds-main\"><span class=\"ds-t\">退款</span><span class=\"ds-s\">支付宝 · 余 ¥ 860.20</span></span><span class=\"ds-amt ds-inc\">+¥ 59.00</span></div><div class=\"ds-row-item\" tabindex=\"0\"><span class=\"ds-ico\">交</span><span class=\"ds-main\"><span class=\"ds-t\">交通</span><span class=\"ds-s\">支付宝 · 余 ¥ 801.20</span></span><span class=\"ds-amt\">-¥ 4.00</span></div></div>",
+      "css": ".ds-list { background: var(--surface, #fff); border-radius: 12px; box-shadow: var(--sh, 0 1px 2px rgba(0,0,0,.04)); overflow: hidden; } .ds-row-item { position: relative; display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 12px 16px; cursor: pointer; font-family: -apple-system, 'PingFang SC', system-ui, sans-serif; color: var(--ink, #1c1c1e); } .ds-row-item + .ds-row-item::before { content: ''; position: absolute; left: 60px; right: 0; top: 0; height: 1px; background: var(--border, rgba(60,60,67,.12)); } .ds-row-item:hover { background: var(--sel, rgba(60,60,67,.10)); } .ds-row-item:focus-visible { outline: 2px solid var(--gold-t, #0959c0); outline-offset: -2px; } .ds-ico { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: var(--card, #efeff2); color: var(--ink2, #3a3a3c); font-size: 13px; font-weight: 600; flex-shrink: 0; } .ds-main { flex: 1; min-width: 0; display: flex; flex-direction: column; } .ds-t { font-size: 14px; font-weight: 500; } .ds-s { font-size: 12px; color: var(--ink3, #636366); } .ds-amt { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--exp, #1c1c1e); } .ds-inc { color: var(--green, #1f7a35); }"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "侧边栏导航：蓝色线性图标、墨色文字，当前项为灰底加粗。",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-item is-active\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 18 18\" aria-hidden=\"true\"><rect x=\"3\" y=\"4\" width=\"12\" height=\"11\" rx=\"2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><path d=\"M3 7.5h12M6.5 2.5v3M11.5 2.5v3\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></svg><span>今日</span></a><a class=\"ds-nav-item\" href=\"#\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 18 18\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"5\" height=\"5\" rx=\"1.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><rect x=\"10\" y=\"3\" width=\"5\" height=\"5\" rx=\"1.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><rect x=\"3\" y=\"10\" width=\"5\" height=\"5\" rx=\"1.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/><rect x=\"10\" y=\"10\" width=\"5\" height=\"5\" rx=\"1.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg><span>总览</span><span class=\"ds-badge\">1</span></a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; gap: 2px; width: 200px; padding: 4px 10px; background: var(--sidebar-bg, #e9e9ee); } .ds-nav-item { position: relative; display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 9px 11px; border-radius: 10px; color: var(--ink, #1c1c1e); text-decoration: none; font: 400 14px -apple-system, 'PingFang SC', system-ui, sans-serif; } .ds-nav-item svg { color: var(--gold-t, #0959c0); flex-shrink: 0; } .ds-nav-item:hover { background: var(--sel, rgba(60,60,67,.10)); } .ds-nav-item.is-active { background: var(--sel, rgba(60,60,67,.10)); font-weight: 600; } .ds-nav-item:focus-visible { outline: 2px solid var(--gold-t, #0959c0); outline-offset: 2px; } .ds-badge { margin-left: auto; background: var(--red, #d70015); color: #fff; border-radius: 999px; font-size: 11px; font-weight: 600; padding: 1px 7px; }"
+    },
+    {
+      "name": "Toast",
+      "kind": "custom",
+      "refersTo": "toast",
+      "description": "深色胶囊提示条，成功前置描线对勾。",
+      "html": "<div class=\"ds-toast\" role=\"status\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path d=\"M3.5 8.5l3 3 6-7\" fill=\"none\" stroke=\"#30d158\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>已记录 ¥ 4.00<button class=\"ds-toast-undo\">撤销</button></div>",
+      "css": ".ds-toast { display: inline-flex; align-items: center; gap: 8px; background: rgba(28,28,30,.94); color: #fff; border-radius: 12px; padding: 11px 16px; font: 400 14px -apple-system, 'PingFang SC', system-ui, sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.18); } .ds-toast-undo { min-height: 30px; padding: 0 10px; border: none; border-radius: 8px; background: rgba(255,255,255,.12); color: #64a8ff; font-size: 13px; cursor: pointer; } .ds-toast-undo:focus-visible { outline: 2px solid #64a8ff; outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "系统自带的账本",
+    "overview": "这套界面的目标是让账本看起来像苹果系统自带的一个 App：系统字体、`#f2f2f7` 灰色分组底、白色内嵌分组列表、发丝分隔线、唯一的强调蓝。它不发明自己的视觉语言，而是把同类标准做法（钱包、提醒事项、健康、钱迹、Copilot Money）以完整的工艺执行到位。打开即记账：页面的视觉重心是记一笔的卡片和今天的记录列表，而不是一个大数字加一排 KPI 卡片。\n\n密度是桌面应用的密度：左侧 200px 侧边栏（≥1200px 时 220px），中间主列，右侧 320–360px 的资产栏；正文 14px，行高 1.5，行与行之间靠缩进发丝线分隔，不靠卡片框。颜色的工作只有三件：强调蓝表示“可操作 / 已选中”，绿色表示收入，靛蓝表示转账；支出用正文墨色，不用红色。深色模式只重定义变量，结构零改动。\n\n这套世界取代了已退役的宣纸 / 金色 / 水墨 / 朱红印章风格。旧样式规则仍留在 `<style>` 上半部分，被 `/* ===== 系统风格（2026-10-18）` 覆盖块整体压过；判断“系统是什么”时以覆盖块和实际渲染为准。",
+    "keyCharacteristics": [
+      "系统字体栈（PingFang SC / -apple-system），所有金额使用等宽数字（`font-variant-numeric: tabular-nums`）",
+      "灰色分组底 + 白色内嵌分组列表，缩进发丝分隔线",
+      "唯一强调色：蓝；收入绿；支出 = 正文墨色；转账靛蓝",
+      "选择态是“淡蓝底 + 1px 蓝色内描边”，不是实心填充",
+      "几乎无阴影；深色模式完全无卡片阴影",
+      "无渐变、无毛玻璃、无 emoji、无装饰符号、无金色、无水墨"
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "只有一种强调色：蓝。可点击、已选中、当前焦点才用蓝；不新增第二个品牌色。", "section": "colors" },
+      { "name": "The Ink Expense Rule", "body": "支出金额用正文墨色，收入用绿色。不用红色表示支出，红色只留给删除与错误。", "section": "colors" },
+      { "name": "The Read the Role, Not the Name Rule", "body": "`--gold*` 是蓝、`--card` 是填充、`--blue` 是靛蓝。按角色取色，不按变量名猜。", "section": "colors" },
+      { "name": "The Tabular Money Rule", "body": "任何显示金额的元素都必须 `font-variant-numeric: tabular-nums` 且 `white-space: nowrap`。", "section": "typography" },
+      { "name": "The No Small Caps Rule", "body": "标签是 13px 常规大小写的中文，不加字距、不全大写、不做眉标。", "section": "typography" },
+      { "name": "The Flat Card Rule", "body": "卡片静止时是平的，hover 也不抬升、不位移；阴影只属于浮在内容之上的东西。", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** 按角色取色：强调蓝用 `--gold` / `--gold-t`，填充用 `--card`，表面用 `--surface`，分组底用 `--paper`。",
+      "**Do** 所有金额使用等宽数字且不换行；外币金额旁标注折算后的人民币（三级灰 12px）。",
+      "**Do** 用“淡蓝底 + 1px 蓝色内描边”表示胶囊选中，用 selection 灰表示导航当前项和行 hover。",
+      "**Do** 新增列表沿用内嵌分组列表：白卡 12px 圆角、行内 32px 中性图标、缩进发丝分隔线。",
+      "**Do** 深色模式只改变量，不另写结构；新增颜色必须同时给出深色值。",
+      "**Do** 每个动效都在 `prefers-reduced-motion` 下有静态退路。"
+    ],
+    "donts": [
+      "**Don't** 用红色表示支出；红色只用于删除、错误和未读徽标。",
+      "**Don't** 引入渐变、毛玻璃、emoji、✦ 等装饰符号、金色或水墨元素。",
+      "**Don't** 给卡片加描边，或让卡片 hover 时抬升、位移。",
+      "**Don't** 给分段控件按支出 / 收入 / 挪钱换颜色；选中态统一为白色滑块。",
+      "**Don't** 在标签上加字距、全大写或眉标；标签就是 13px 中文。",
+      "**Don't** 把旧世界的图表分类色板当作本系统的配色依据去扩展。"
+    ]
+  }
+}
