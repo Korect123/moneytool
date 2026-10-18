@@ -178,8 +178,9 @@
 - **零改动**：`data` 结构、`deductExpense` / `saveToCloud` / `loadFromCloud` / `migrateData`、认证流程。
 - 验证：本地演示数据（`.impeccable/review/demo-seed.js`，只在 8731 端口、不连云端）走通记一笔、编辑、删除入口、深浅色、手机宽度；设计检测 97 → 0；独立评审两轮后结论 ship。
   旧版备份：`index.before-redesign-20261018.html`。
-- **还没做 / 下一步**：新记一笔后的「撤销」（涉及余额，需作者确认方案）；分类图标要不要恢复彩色方块；图表配色仍是旧色板；
-  账单/统计/设置的布局重排；代码还在无 git 的 `moneytool-main`，需合并回 git 仓库后推送。
+- **还没做 / 下一步**：分类图标要不要恢复彩色方块；图表配色仍是旧色板；账单/统计/设置的布局重排。
+  新记一笔后的「撤销」：方案已讲清（复用删除的余额还原逻辑），作者 10/18 决定**先不做**。
+- 代码已从桌面的 `moneytool-main`（zip 解压、无 git）并回本仓库，分支 `redesign/apple-style`；以后在本仓库改，`moneytool-main` 不再使用。
 
 ### 遗留 / 观察
 
